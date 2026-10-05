@@ -1,4 +1,4 @@
-﻿namespace SteamSaveMigrator.Tests;
+namespace SteamSaveMigrator.Tests;
 
 public class UnitTest1
 {

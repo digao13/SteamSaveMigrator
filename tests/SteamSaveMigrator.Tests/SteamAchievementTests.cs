@@ -344,8 +344,92 @@ public class SteamAchievementTests : IDisposable
                         JsonSerializer.Serialize(ns, updated, options);
                     }
                 }
-            }
         }
+    }
+}
+
+    [Fact]
+    public void SteamAchievementService_NonPrefixedAchievements_ParsesAndMatchesCorrectly()
+    {
+        var service = new SteamAchievementService();
+        var steamPath = Path.Combine(_tempDir, "SteamCustomIds");
+        var appCacheStats = Path.Combine(steamPath, "appcache", "stats");
+        Directory.CreateDirectory(appCacheStats);
+
+        uint appId = 2947280;
+        uint steamId3 = 81405752;
+
+        var schemaFile = Path.Combine(appCacheStats, $"UserGameStatsSchema_{appId}.bin");
+        using (var ms = new MemoryStream())
+        using (var bw = new BinaryWriter(ms))
+        {
+            // SubBlock stats
+            bw.Write((byte)0);
+            WriteNullTerminated(bw, "stats");
+            // SubBlock 1 (Group 1)
+            bw.Write((byte)0);
+            WriteNullTerminated(bw, "1");
+            // SubBlock bits
+            bw.Write((byte)0);
+            WriteNullTerminated(bw, "bits");
+
+            // Ach 1: Bit 1 (GetWristband)
+            bw.Write((byte)0);
+            WriteNullTerminated(bw, "1");
+            bw.Write((byte)1);
+            WriteNullTerminated(bw, "name");
+            WriteNullTerminated(bw, "GetWristband");
+            bw.Write((byte)1);
+            WriteNullTerminated(bw, "english");
+            WriteNullTerminated(bw, "Warrior's Path");
+            bw.Write((byte)8); // EndBit 1
+
+            // Ach 2: Bit 2 (KillCharon)
+            bw.Write((byte)0);
+            WriteNullTerminated(bw, "2");
+            bw.Write((byte)1);
+            WriteNullTerminated(bw, "name");
+            WriteNullTerminated(bw, "KillCharon");
+            bw.Write((byte)1);
+            WriteNullTerminated(bw, "english");
+            WriteNullTerminated(bw, "Beyond the Long River");
+            bw.Write((byte)8); // EndBit 2
+
+            bw.Write((byte)8); // EndBits
+            bw.Write((byte)8); // EndGroup 1
+            bw.Write((byte)8); // EndStats
+
+            File.WriteAllBytes(schemaFile, ms.ToArray());
+        }
+
+        var userStatsFile = Path.Combine(appCacheStats, $"UserGameStats_{steamId3}_{appId}.bin");
+        using (var ms = new MemoryStream())
+        using (var bw = new BinaryWriter(ms))
+        {
+            bw.Write((byte)0);
+            WriteNullTerminated(bw, "cache");
+            bw.Write((byte)0);
+            WriteNullTerminated(bw, "1");
+            bw.Write((byte)0);
+            WriteNullTerminated(bw, "AchievementTimes");
+            // Desbloqueou apenas o bit 1
+            bw.Write((byte)2);
+            WriteNullTerminated(bw, "1");
+            bw.Write((int)1791229050);
+
+            bw.Write((byte)8);
+            bw.Write((byte)8);
+            bw.Write((byte)8);
+
+            File.WriteAllBytes(userStatsFile, ms.ToArray());
+        }
+
+        var achs = service.GetGameAchievements(steamPath, appId, steamId3);
+        Assert.Equal(2, achs.Count);
+        Assert.Equal("GetWristband", achs[0].Id);
+        Assert.True(achs[0].IsUnlocked);
+        Assert.Equal("KillCharon", achs[1].Id);
+        Assert.False(achs[1].IsUnlocked);
     }
 
     private static void WriteNullTerminated(BinaryWriter bw, string text)

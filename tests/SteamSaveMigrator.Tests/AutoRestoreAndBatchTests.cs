@@ -275,4 +275,47 @@ public class AutoRestoreAndBatchTests : IDisposable
         Assert.Equal(5, loaded.WatcherPollInterval);
         Assert.Equal(7, loaded.WatcherPostExitDelay);
     }
+
+    [Fact]
+    public void Should_Detect_Saves_Via_AutoCloud_And_Engine_Scanners()
+    {
+        var testSteamDir = Path.Combine(_tempRoot, "SteamMock");
+        var userdataPath = Path.Combine(testSteamDir, "userdata", "123456", "999888");
+        Directory.CreateDirectory(userdataPath);
+
+        // Cria estrutura de save em AppDataLocalLow simulada (ex: Studio Doodal/Solateria)
+        var localLowDir = Path.Combine(_sourceUserDir, "AppData", "LocalLow", "MockStudio", "MockGame");
+        Directory.CreateDirectory(localLowDir);
+        File.WriteAllText(Path.Combine(localLowDir, "SaveData.txt"), "MOCK_SAVE_DATA_CONTENT");
+
+        // Cria remotecache.vdf apontando para root 12 (AppDataLocalLow)
+        var remoteCacheVdf = Path.Combine(userdataPath, "remotecache.vdf");
+        var vdfContent = "\"999888\"\n{\n\t\"MockStudio/MockGame/SaveData.txt\"\n\t{\n\t\t\"root\"\t\t\"12\"\n\t\t\"size\"\t\t\"100\"\n\t}\n}";
+        File.WriteAllText(remoteCacheVdf, vdfContent);
+
+        var steamInfo = new SteamInstallationInfo
+        {
+            IsFound = true,
+            SteamPath = testSteamDir,
+            Accounts = new()
+            {
+                new() { SteamId3 = 123456, SteamId64 = 76561198041671480, PersonaName = "MockPlayer" }
+            }
+        };
+
+        var game = new SteamGame
+        {
+            AppId = 999888,
+            Name = "Mock Game",
+            InstallDir = "MockGame"
+        };
+
+        var locations = SteamSaveMigrator.Core.Detectors.SaveLocationDetector.DetectSaveLocations(game, steamInfo, _sourceUserDir);
+
+        Assert.NotEmpty(locations);
+        Assert.Contains(locations, l => l.SourcePath.Equals(localLowDir, StringComparison.OrdinalIgnoreCase));
+        var match = locations.First(l => l.SourcePath.Equals(localLowDir, StringComparison.OrdinalIgnoreCase));
+        Assert.True(match.FileCount >= 1);
+        Assert.Contains(match.Files, f => f.RelativePath.Contains("SaveData.txt"));
+    }
 }

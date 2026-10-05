@@ -57,16 +57,16 @@ public class SteamAchievementService
                         DateTime timeUtc = default;
 
                         // 1. Chave precisa de grupo e bit: ex "2_7", "3_13", "1_1"
-                        if (ach.GroupId.HasValue && ach.BitId.HasValue)
+                        if (ach.BitId.HasValue)
                         {
-                            var groupKey = $"{ach.GroupId.Value}_{ach.BitId.Value}";
+                            var groupKey = $"{ach.GroupId ?? 1}_{ach.BitId.Value}";
                             if (unlockedData.TryGetValue(groupKey, out timeUtc))
                             {
                                 isUnlocked = true;
                             }
                         }
 
-                        // 2. Chave direta por ID da conquista: ex "ACH_MOSS2_WINDOW_ONE"
+                        // 2. Chave direta por ID da conquista: ex "ACH_MOSS2_WINDOW_ONE" ou "GetWristband"
                         if (!isUnlocked && !string.IsNullOrWhiteSpace(ach.Id) && unlockedData.TryGetValue(ach.Id, out timeUtc))
                         {
                             isUnlocked = true;
@@ -84,6 +84,12 @@ public class SteamAchievementService
                                     isUnlocked = true;
                                 }
                             }
+                        }
+
+                        // 4. Fallback por BitId
+                        if (!isUnlocked && ach.BitId.HasValue && !ach.GroupId.HasValue && unlockedData.TryGetValue(ach.BitId.Value.ToString(), out timeUtc))
+                        {
+                            isUnlocked = true;
                         }
 
                         if (isUnlocked)
@@ -410,63 +416,63 @@ public class SteamAchievementService
         using var ms = new MemoryStream(bytes);
         using var br = new BinaryReader(ms);
 
-        string? currentName = null;
-        string? currentToken = null;
-        string? currentEnglish = null;
-        string? currentPtBr = null;
-        string? currentDesc = null;
-        string? currentDescPtBr = null;
-        bool currentHidden = false;
+        var stack = new Stack<string>();
+        string? curName = null;
+        string? curToken = null;
+        string? curEnglish = null;
+        string? curPtBr = null;
+        string? curDesc = null;
+        string? curDescPtBr = null;
+        int? curGroupId = null;
+        int? curBitId = null;
+        bool curHidden = false;
 
         void CommitCurrent()
         {
-            if (!string.IsNullOrWhiteSpace(currentName))
+            if (!string.IsNullOrWhiteSpace(curName) || curBitId.HasValue)
             {
-                var display = !string.IsNullOrWhiteSpace(currentPtBr) ? currentPtBr : (!string.IsNullOrWhiteSpace(currentEnglish) ? currentEnglish : currentName);
-                var desc = !string.IsNullOrWhiteSpace(currentDescPtBr) ? currentDescPtBr : (currentDesc ?? string.Empty);
+                var display = !string.IsNullOrWhiteSpace(curPtBr) ? curPtBr : (!string.IsNullOrWhiteSpace(curEnglish) ? curEnglish : (curName ?? $"Conquista #{curBitId}"));
+                var desc = !string.IsNullOrWhiteSpace(curDescPtBr) ? curDescPtBr : (curDesc ?? string.Empty);
 
-                int? groupId = null;
-                int? bitId = null;
+                int? gId = curGroupId;
+                int? bId = curBitId;
 
-                if (!string.IsNullOrWhiteSpace(currentToken))
+                if (!gId.HasValue || !bId.HasValue)
                 {
-                    var match = AchievementTokenRegex.Match(currentToken);
-                    if (match.Success && int.TryParse(match.Groups[1].Value, out var g) && int.TryParse(match.Groups[2].Value, out var b))
+                    var tokenToTest = curToken ?? curName;
+                    if (!string.IsNullOrWhiteSpace(tokenToTest))
                     {
-                        groupId = g;
-                        bitId = b;
-                    }
-                }
-
-                if (!groupId.HasValue && !string.IsNullOrWhiteSpace(currentName))
-                {
-                    var matchName = AchievementTokenRegex.Match(currentName);
-                    if (matchName.Success && int.TryParse(matchName.Groups[1].Value, out var g) && int.TryParse(matchName.Groups[2].Value, out var b))
-                    {
-                        groupId = g;
-                        bitId = b;
+                        var match = AchievementTokenRegex.Match(tokenToTest);
+                        if (match.Success && int.TryParse(match.Groups[1].Value, out var g) && int.TryParse(match.Groups[2].Value, out var b))
+                        {
+                            gId ??= g;
+                            bId ??= b;
+                        }
                     }
                 }
 
                 list.Add(new GameAchievementInfo
                 {
-                    Id = currentName,
+                    Id = curName ?? (bId.HasValue ? bId.Value.ToString() : string.Empty),
                     DisplayName = display,
                     Description = desc,
-                    IsHidden = currentHidden,
+                    IsHidden = curHidden,
                     IsUnlocked = false,
-                    StatToken = currentToken,
-                    GroupId = groupId,
-                    BitId = bitId
+                    StatToken = curToken,
+                    GroupId = gId,
+                    BitId = bId
                 });
             }
-            currentName = null;
-            currentToken = null;
-            currentEnglish = null;
-            currentPtBr = null;
-            currentDesc = null;
-            currentDescPtBr = null;
-            currentHidden = false;
+
+            curName = null;
+            curToken = null;
+            curEnglish = null;
+            curPtBr = null;
+            curDesc = null;
+            curDescPtBr = null;
+            curGroupId = null;
+            curBitId = null;
+            curHidden = false;
         }
 
         while (ms.Position < ms.Length)
@@ -474,41 +480,79 @@ public class SteamAchievementService
             byte type = br.ReadByte();
             if (type == 8) // EndBlock
             {
+                if (stack.Count > 0)
+                {
+                    var popped = stack.Pop();
+                    var arr = stack.ToArray();
+                    if (arr.Length >= 1 && arr[0].Equals("bits", StringComparison.OrdinalIgnoreCase) && int.TryParse(popped, out _))
+                    {
+                        CommitCurrent();
+                    }
+                }
                 continue;
             }
 
-            var key = ReadNullTerminatedString(br);
+            string key = ReadNullTerminatedString(br);
             if (type == 0) // SubBlock
             {
-                if (key.Equals("bits", StringComparison.OrdinalIgnoreCase) || key.Equals("stats", StringComparison.OrdinalIgnoreCase))
+                stack.Push(key);
+                var arr = stack.ToArray();
+                if (arr.Length >= 2 && arr[1].Equals("bits", StringComparison.OrdinalIgnoreCase) && int.TryParse(key, out var bId))
                 {
-                    // novo bloco
+                    curBitId = bId;
+                    if (arr.Length >= 3 && int.TryParse(arr[2], out var gId))
+                    {
+                        curGroupId = gId;
+                    }
+                    else
+                    {
+                        curGroupId = 1;
+                    }
                 }
             }
             else if (type == 1) // String
             {
-                var val = ReadNullTerminatedString(br);
+                string val = ReadNullTerminatedString(br);
+                var arr = stack.ToArray();
+
                 if (key.Equals("name", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (val.StartsWith("ACH_", StringComparison.OrdinalIgnoreCase) || val.StartsWith("NEW_ACHIEVEMENT", StringComparison.OrdinalIgnoreCase) || list.Count > 0)
+                    if (arr.Length == 0)
                     {
+                        // Formato plano
                         CommitCurrent();
-                        currentName = val;
+                        curName = val;
+                    }
+                    else if (arr.Contains("bits"))
+                    {
+                        if (curName == null) curName = val;
                     }
                 }
                 else if (key.Equals("token", StringComparison.OrdinalIgnoreCase))
                 {
-                    currentToken = val;
+                    curToken = val;
                 }
                 else if (key.Equals("english", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (currentEnglish == null) currentEnglish = val;
-                    else currentDesc = val;
+                    if (arr.Length > 0 && arr[0].Equals("name", StringComparison.OrdinalIgnoreCase))
+                        curEnglish = val;
+                    else if (arr.Length > 0 && arr[0].Equals("desc", StringComparison.OrdinalIgnoreCase))
+                        curDesc = val;
+                    else if (curEnglish == null)
+                        curEnglish = val;
+                    else
+                        curDesc = val;
                 }
                 else if (key.Equals("brazilian", StringComparison.OrdinalIgnoreCase) || key.Equals("portuguese", StringComparison.OrdinalIgnoreCase))
                 {
-                    if (currentPtBr == null) currentPtBr = val;
-                    else currentDescPtBr = val;
+                    if (arr.Length > 0 && arr[0].Equals("name", StringComparison.OrdinalIgnoreCase))
+                        curPtBr = val;
+                    else if (arr.Length > 0 && arr[0].Equals("desc", StringComparison.OrdinalIgnoreCase))
+                        curDescPtBr = val;
+                    else if (curPtBr == null)
+                        curPtBr = val;
+                    else
+                        curDescPtBr = val;
                 }
             }
             else if (type == 2) // Int32
@@ -516,7 +560,7 @@ public class SteamAchievementService
                 int val = br.ReadInt32();
                 if (key.Equals("hidden", StringComparison.OrdinalIgnoreCase))
                 {
-                    currentHidden = val == 1;
+                    curHidden = val == 1;
                 }
             }
             else if (type == 7) // Int64
@@ -565,21 +609,13 @@ public class SteamAchievementService
                 if (val > 0 && blockStack.Count >= 2)
                 {
                     var stackArr = blockStack.ToArray();
-                    // stackArr[0] é o topo (bloco atual)
-                    // stackArr[1] é o bloco pai
                     if (string.Equals(stackArr[0], "AchievementTimes", StringComparison.OrdinalIgnoreCase))
                     {
                         var parentGroup = stackArr[1];
                         var timeUtc = DateTimeOffset.FromUnixTimeSeconds(val).UtcDateTime;
 
-                        // Chave composta com grupo: ex "2_7", "3_1"
                         dict[$"{parentGroup}_{key}"] = timeUtc;
-
-                        // Chave simples apenas se for identificador não-numérico (ex: nome literal da conquista)
-                        if (!int.TryParse(key, out _))
-                        {
-                            dict[key] = timeUtc;
-                        }
+                        dict[key] = timeUtc;
                     }
                 }
             }
