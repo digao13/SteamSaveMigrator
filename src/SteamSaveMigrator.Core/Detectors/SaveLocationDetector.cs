@@ -40,6 +40,17 @@ public static class SaveLocationDetector
                 return;
             }
 
+            // Se o novo caminho é pai de diretórios já adicionados, remove as subpastas redundantes
+            var redundant = seenPaths
+                .Where(p => p.StartsWith(fullPath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            foreach (var red in redundant)
+            {
+                seenPaths.Remove(red);
+                locations.RemoveAll(l => l.SourcePath.Equals(red, StringComparison.OrdinalIgnoreCase));
+            }
+
             var files = ScanDirectoryFiles(fullPath);
             if (files.Count > 0 && seenPaths.Add(fullPath))
             {
@@ -102,8 +113,10 @@ public static class SaveLocationDetector
         // Detecta o mapeamento oficial da Steam Cloud para caminhos locais (AppData, LocalLow, Documents, etc.)
         DetectSteamAutoCloud(game, steamInfo, folders, TryAddDirectoryLocation, TryAddFileLocation);
 
-        // 2. Engine Detectors: Unity, Unreal Engine e Godot
-        DetectGameEngines(game, folders, TryAddDirectoryLocation);
+        // 2. Engine Detector Universal:
+        // Unity, Unreal Engine (3/4/5), Godot (3/4), GameMaker, RPG Maker (MV/MZ/XP/VX),
+        // Ren'Py, Source/Source 2, CryEngine, id Tech, Bethesda, MonoGame/FNA, Electron, BioWare, KiriKiri
+        EngineSaveDetector.Detect(game, folders, TryAddDirectoryLocation);
 
         // 3. Steam Userdata (Saves sincronizados na pasta de userdata da Steam)
         DetectSteamUserdata(game, steamInfo, userProfile, seenPaths, locations);
@@ -200,76 +213,6 @@ public static class SaveLocationDetector
         catch { }
     }
 
-    private static void DetectGameEngines(
-        SteamGame game,
-        UserProfileFolders folders,
-        Action<string, SaveLocationType, string> addDir)
-    {
-        // 1. Unity Engine: procura app.info (Company / Product)
-        if (!string.IsNullOrWhiteSpace(game.InstallPath) && Directory.Exists(game.InstallPath))
-        {
-            try
-            {
-                var appInfoFiles = Directory.GetFiles(game.InstallPath, "app.info", SearchOption.AllDirectories);
-                foreach (var appInfo in appInfoFiles)
-                {
-                    var lines = File.ReadAllLines(appInfo).Where(l => !string.IsNullOrWhiteSpace(l)).ToArray();
-                    if (lines.Length >= 2)
-                    {
-                        var company = lines[0].Trim();
-                        var product = lines[1].Trim();
-
-                        addDir(Path.Combine(folders.AppDataLocalLow, company, product), SaveLocationType.AppDataLocalLow, $"Unity ({product})");
-                        addDir(Path.Combine(folders.AppDataLocal, company, product), SaveLocationType.AppDataLocal, $"Unity ({product})");
-                        addDir(Path.Combine(folders.AppDataRoaming, company, product), SaveLocationType.AppDataRoaming, $"Unity ({product})");
-                    }
-                }
-            }
-            catch { }
-        }
-
-        // 2. Unreal Engine: Saved\SaveGames
-        var keywords = GenerateSearchKeywords(game);
-        foreach (var kw in keywords)
-        {
-            if (string.IsNullOrWhiteSpace(kw) || kw.Length < 3) continue;
-
-            var uePath1 = Path.Combine(folders.AppDataLocal, kw, "Saved", "SaveGames");
-            if (Directory.Exists(uePath1))
-            {
-                addDir(uePath1, SaveLocationType.AppDataLocal, $"Unreal Engine ({kw})");
-            }
-
-            var uePathRoot = Path.Combine(folders.AppDataLocal, kw, "Saved");
-            if (Directory.Exists(uePathRoot))
-            {
-                addDir(uePathRoot, SaveLocationType.AppDataLocal, $"Unreal Engine ({kw})");
-            }
-
-            if (!string.IsNullOrWhiteSpace(game.InstallPath) && Directory.Exists(game.InstallPath))
-            {
-                var ueInternal = Path.Combine(game.InstallPath, kw, "Saved", "SaveGames");
-                if (Directory.Exists(ueInternal))
-                {
-                    addDir(ueInternal, SaveLocationType.Custom, $"Unreal Engine ({kw})");
-                }
-            }
-        }
-
-        // 3. Godot Engine: AppData\Roaming\Godot\app_userdata\<GameName>
-        var godotBase = Path.Combine(folders.AppDataRoaming, "Godot", "app_userdata");
-        if (Directory.Exists(godotBase))
-        {
-            foreach (var kw in keywords)
-            {
-                var godotPath = Path.Combine(godotBase, kw);
-                if (Directory.Exists(godotPath))
-                {
-                    addDir(godotPath, SaveLocationType.AppDataRoaming, $"Godot ({kw})");
-                }
-            }
-        }
-    }
 
     private static void DetectSteamUserdata(
         SteamGame game,
@@ -492,7 +435,7 @@ public static class SaveLocationDetector
         return new string(chars).ToLowerInvariant();
     }
 
-    private static List<string> GenerateSearchKeywords(SteamGame game)
+    public static List<string> GenerateSearchKeywords(SteamGame game)
     {
         var list = new List<string>();
 
@@ -502,11 +445,41 @@ public static class SaveLocationDetector
         if (!string.IsNullOrWhiteSpace(game.InstallDir))
             list.Add(game.InstallDir);
 
+        if (game.AppId > 0)
+            list.Add(game.AppId.ToString());
+
         if (game.Name.Contains(':'))
             list.Add(game.Name.Split(':')[0].Trim());
 
         if (game.Name.Contains('-'))
             list.Add(game.Name.Split('-')[0].Trim());
+
+        // Limpa edições/versões conhecidas
+        var cleanedTitle = game.Name
+            .Replace("Enhanced Edition", "", StringComparison.OrdinalIgnoreCase)
+            .Replace("Definitive Edition", "", StringComparison.OrdinalIgnoreCase)
+            .Replace("Special Edition", "", StringComparison.OrdinalIgnoreCase)
+            .Replace("Remastered", "", StringComparison.OrdinalIgnoreCase)
+            .Replace("Director's Cut", "", StringComparison.OrdinalIgnoreCase)
+            .Replace("Game of the Year Edition", "", StringComparison.OrdinalIgnoreCase)
+            .Replace("GOTY Edition", "", StringComparison.OrdinalIgnoreCase)
+            .Trim();
+
+        if (!string.IsNullOrWhiteSpace(cleanedTitle) && !list.Contains(cleanedTitle, StringComparer.OrdinalIgnoreCase))
+        {
+            list.Add(cleanedTitle);
+        }
+
+        // Acrônimos para títulos compostos (ex: "Grand Theft Auto V" -> "GTAV")
+        var words = game.Name.Split(new[] { ' ', '-', ':', '\'' }, StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length >= 2)
+        {
+            var acronym = new string(words.Where(w => w.Length > 0 && char.IsLetterOrDigit(w[0])).Select(w => char.ToUpperInvariant(w[0])).ToArray());
+            if (acronym.Length >= 3)
+            {
+                list.Add(acronym);
+            }
+        }
 
         return list.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
     }

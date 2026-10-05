@@ -2,7 +2,7 @@
 ; Gerado para instalação completa, autônoma e com todas as dependências incluídas
 
 #define MyAppName "SteamSave Migrator"
-#define MyAppVersion "1.2.9"
+#define MyAppVersion "1.3.0"
 #define MyAppPublisher "SteamSave Migrator Team"
 #define MyAppExeName "SteamSaveMigrator.Wpf.exe"
 
@@ -17,7 +17,7 @@ DefaultDirName={autopf}\SteamSaveMigrator
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir=dist
-OutputBaseFilename=SteamSaveMigrator_v1.2.9_Setup
+OutputBaseFilename=SteamSaveMigrator_v1.3.0_Setup
 SetupIconFile=src\SteamSaveMigrator.Wpf\Assets\app_icon.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2/ultra64
@@ -34,7 +34,7 @@ Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortugue
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Files]
-Source: "dist\publish_v129\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "dist\publish_v130\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"
