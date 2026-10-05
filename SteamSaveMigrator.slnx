@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SteamSaveMigrator.Cli/SteamSaveMigrator.Cli.csproj" />
+    <Project Path="src/SteamSaveMigrator.Core/SteamSaveMigrator.Core.csproj" />
+    <Project Path="src/SteamSaveMigrator.Wpf/SteamSaveMigrator.Wpf.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SteamSaveMigrator.Tests/SteamSaveMigrator.Tests.csproj" />
+  </Folder>
+</Solution>

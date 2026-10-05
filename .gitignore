@@ -1,0 +1,78 @@
+# ==========================================
+# SteamSaveMigrator - Git Ignore Configuration
+# ==========================================
+
+# Compilação e Artefatos .NET / C#
+[Bb]in/
+[Oo]bj/
+build_obj/
+build_out/
+dist/
+publish/
+PublishOutputs/
+*.localform
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svclog
+
+# Visual Studio & IDEs
+.vs/
+.idea/
+.vscode/
+*.DotSettings.user
+_ReSharper*/
+
+# Pacotes e Caches NuGet
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+project.lock.json
+project.assets.json
+
+# Testes e Cobertura
+TestResults/
+test-results/
+[Tt]est[Rr]esult*/
+*.trx
+*.coverage
+*.coveragexml
+
+# Backups e Saves de Jogos (Restrito / Sensível)
+# NUNCA commitar dados de saves ou backups pessoais
+backups/
+**/backups/
+*.zip
+*.tar.gz
+*.7z
+*.rar
+*.sl2
+*.sl2.bak
+*.sav
+*.dat
+
+# Credenciais, Segredos e Tokens OAuth (Restrito / Confidencial)
+# Use client_secret.example.json como modelo
+credentials.json
+client_secret.json
+client_secrets.cfg
+*.cfg
+*.env
+*.env.local
+*.env.*.local
+GoogleDriveAuth/
+CloudCache/
+
+# Pastas de Rascunho / Scripts Internos de Desenvolvimento
+scratch/
+**/scratch/
+
+# Logs e Arquivos de Sistema
+*.log
+Thumbs.db
+[Dd]esktop.ini
+.DS_Store
+$RECYCLE.BIN/

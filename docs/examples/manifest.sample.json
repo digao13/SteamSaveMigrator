@@ -1,0 +1,32 @@
+{
+  "ManifestVersion": "1.0",
+  "CreatedUtc": "2026-10-05T12:00:00Z",
+  "SourceMachineName": "GAMING-RIG",
+  "SourceUsername": "GamerOne",
+  "SourceUserProfile": "C:\\Users\\GamerOne",
+  "SourceSteamId3": 123456789,
+  "AppId": 1145350,
+  "GameName": "Hades II",
+  "Entries": [
+    {
+      "OriginalFullPath": "C:\\Program Files (x86)\\Steam\\userdata\\123456789\\1145350\\remotecache.vdf",
+      "TokenizedPath": "%STEAM_USERDATA%\\123456789\\1145350\\remotecache.vdf",
+      "LocationType": 0,
+      "ZipEntryName": "data/_STEAM_USERDATA_/123456789/1145350/remotecache.vdf",
+      "FileSizeBytes": 1864,
+      "LastWriteTimeUtc": "2026-10-05T11:45:00Z",
+      "Sha256Checksum": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "OriginalFullPath": "C:\\Users\\GamerOne\\Saved Games\\Hades II\\steam_autocloud.vdf",
+      "TokenizedPath": "%SAVEDGAMES%\\Hades II\\steam_autocloud.vdf",
+      "LocationType": 5,
+      "ZipEntryName": "data/_SAVEDGAMES_/Hades II/steam_autocloud.vdf",
+      "FileSizeBytes": 51,
+      "LastWriteTimeUtc": "2026-10-05T11:45:00Z",
+      "Sha256Checksum": "50cedc4f88af0fe34986694024ac2639c42f77688425dbefd16a00252dd9e7a2"
+    }
+  ],
+  "TotalFiles": 2,
+  "TotalSizeBytes": 1915
+}
