@@ -151,7 +151,10 @@ if (-not $SkipGit) {
     git commit -m "release: $tag" --allow-empty
     
     # Remove tag local se ja existir para atualizar
-    git tag -d $tag 2>$null
+    $existingTag = git tag -l $tag
+    if ($existingTag) {
+        git tag -d $tag
+    }
     git tag -a $tag -m "Release $tag"
 
     Write-Host "Enviando commits e tags para o GitHub (git push origin main --tags)..." -ForegroundColor Cyan
@@ -165,9 +168,12 @@ if (-not $SkipGit) {
     $gh = Get-Command "gh.exe" -ErrorAction SilentlyContinue
     if ($gh) {
         $releaseTitle = if (-not [string]::IsNullOrWhiteSpace($Title)) { $Title } else { "SteamSave Migrator $tag" }
-        
-        # Deleta release antiga de mesmo nome se houver
-        gh release delete $tag --yes --cleanup-tag 2>$null
+
+        # Deleta release antiga de mesmo nome se ja existir
+        $existingRel = gh release list | Select-String -Pattern "\b$tag\b"
+        if ($existingRel) {
+            gh release delete $tag --yes --cleanup-tag
+        }
 
         $ghArgs = @("release", "create", $tag)
         if (Test-Path $setupExePath) {
