@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -195,6 +196,63 @@ public class SteamAchievementService
         var unlockedList = achievements.Where(a => a.IsUnlocked).ToList();
         if (unlockedList.Count == 0) return null;
 
+        // Tenta executar em processo filho dedicado para que a Steam libere o estado de "jogo em execução" imediatamente ao terminar
+        var exePath = Environment.ProcessPath;
+        if (!string.IsNullOrEmpty(exePath) && File.Exists(exePath) && !exePath.Contains("testhost", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                var tempInput = Path.Combine(Path.GetTempPath(), $"steam_ach_in_{Guid.NewGuid():N}.json");
+                var tempOutput = Path.Combine(Path.GetTempPath(), $"steam_ach_out_{Guid.NewGuid():N}.json");
+
+                File.WriteAllText(tempInput, System.Text.Json.JsonSerializer.Serialize(unlockedList));
+
+                var psi = new ProcessStartInfo
+                {
+                    FileName = exePath,
+                    Arguments = $"--sync-achievements {appId} {targetSteamId3} \"{tempInput}\" \"{tempOutput}\"",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    WindowStyle = ProcessWindowStyle.Hidden,
+                    WorkingDirectory = AppDomain.CurrentDomain.BaseDirectory
+                };
+
+                using var proc = Process.Start(psi);
+                if (proc != null)
+                {
+                    bool exited = proc.WaitForExit(12000);
+                    if (!exited)
+                    {
+                        try { proc.Kill(); } catch { }
+                    }
+
+                    if (File.Exists(tempOutput))
+                    {
+                        var outJson = File.ReadAllText(tempOutput);
+                        var result = System.Text.Json.JsonSerializer.Deserialize<AchievementSyncResult>(outJson);
+                        try { File.Delete(tempInput); } catch { }
+                        try { File.Delete(tempOutput); } catch { }
+                        if (result != null) return result;
+                    }
+                }
+            }
+            catch
+            {
+                // Fallback para execução direta in-process se não for possível iniciar o processo isolado
+            }
+        }
+
+        return ExecuteDirectSteamworksSync(appId, targetSteamId3, achievements);
+    }
+
+    /// <summary>
+    /// Executa a chamada à API oficial Steamworks para registrar as conquistas e descarrega as conexões.
+    /// </summary>
+    public static AchievementSyncResult? ExecuteDirectSteamworksSync(uint appId, uint targetSteamId3, List<GameAchievementInfo> achievements)
+    {
+        var unlockedList = achievements.Where(a => a.IsUnlocked).ToList();
+        if (unlockedList.Count == 0) return null;
+
         string appidFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "steam_appid.txt");
         try { File.WriteAllText(appidFile, appId.ToString()); } catch { }
 
@@ -231,6 +289,13 @@ public class SteamAchievementService
 
             Steamworks.SteamUserStats.RequestCurrentStats();
 
+            // Bomba callbacks para receber as estatísticas da Steam
+            for (int i = 0; i < 10; i++)
+            {
+                Steamworks.SteamClient.RunCallbacks();
+                System.Threading.Thread.Sleep(30);
+            }
+
             var targetIds = new HashSet<string>(unlockedList.Select(a => a.Id), StringComparer.OrdinalIgnoreCase);
             int liveUnlocked = 0;
 
@@ -246,6 +311,13 @@ public class SteamAchievementService
             if (liveUnlocked > 0)
             {
                 Steamworks.SteamUserStats.StoreStats();
+
+                // Bomba callbacks para confirmar o salvamento nos servidores da Steam
+                for (int i = 0; i < 15; i++)
+                {
+                    Steamworks.SteamClient.RunCallbacks();
+                    System.Threading.Thread.Sleep(30);
+                }
             }
 
             try { Steamworks.SteamClient.Shutdown(); } catch { }

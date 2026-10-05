@@ -23,6 +23,33 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        // Processa requisição isolada de sincronização de conquistas fora do processo de interface
+        if (e.Args.Length >= 5 && string.Equals(e.Args[0], "--sync-achievements", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                uint appId = uint.Parse(e.Args[1]);
+                uint targetSteamId3 = uint.Parse(e.Args[2]);
+                string inputJson = e.Args[3];
+                string outputJson = e.Args[4];
+
+                if (System.IO.File.Exists(inputJson))
+                {
+                    var achJson = System.IO.File.ReadAllText(inputJson);
+                    var achList = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.List<Core.Models.GameAchievementInfo>>(achJson) ?? new();
+                    var res = Core.Services.SteamAchievementService.ExecuteDirectSteamworksSync(appId, targetSteamId3, achList);
+                    if (res != null)
+                    {
+                        System.IO.File.WriteAllText(outputJson, System.Text.Json.JsonSerializer.Serialize(res));
+                    }
+                }
+            }
+            catch { }
+
+            Environment.Exit(0);
+            return;
+        }
+
         bool createdNew;
         try
         {

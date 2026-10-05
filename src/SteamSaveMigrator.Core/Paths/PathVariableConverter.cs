@@ -55,43 +55,62 @@ public static class PathVariableConverter
         }
 
         // Pastas conhecidas do perfil
-        if (normalizedPath.StartsWith(sourceFolders.AppDataLocal, StringComparison.OrdinalIgnoreCase))
+        // ATENÇÃO: AppDataLocalLow DEVE ser verificado ANTES de AppDataLocal para evitar colisão de prefixo
+        if (IsPathUnder(normalizedPath, sourceFolders.AppDataLocalLow))
         {
-            var relative = normalizedPath.Substring(sourceFolders.AppDataLocal.Length).TrimStart('\\', '/');
-            return Path.Combine(TokenLocalAppData, relative);
-        }
-
-        if (normalizedPath.StartsWith(sourceFolders.AppDataRoaming, StringComparison.OrdinalIgnoreCase))
-        {
-            var relative = normalizedPath.Substring(sourceFolders.AppDataRoaming.Length).TrimStart('\\', '/');
-            return Path.Combine(TokenAppData, relative);
-        }
-
-        if (normalizedPath.StartsWith(sourceFolders.AppDataLocalLow, StringComparison.OrdinalIgnoreCase))
-        {
-            var relative = normalizedPath.Substring(sourceFolders.AppDataLocalLow.Length).TrimStart('\\', '/');
+            var relative = GetRelativeSubPath(normalizedPath, sourceFolders.AppDataLocalLow);
             return Path.Combine(TokenAppDataLocalLow, relative);
         }
 
-        if (normalizedPath.StartsWith(sourceFolders.Documents, StringComparison.OrdinalIgnoreCase))
+        if (IsPathUnder(normalizedPath, sourceFolders.AppDataLocal))
         {
-            var relative = normalizedPath.Substring(sourceFolders.Documents.Length).TrimStart('\\', '/');
+            var relative = GetRelativeSubPath(normalizedPath, sourceFolders.AppDataLocal);
+            return Path.Combine(TokenLocalAppData, relative);
+        }
+
+        if (IsPathUnder(normalizedPath, sourceFolders.AppDataRoaming))
+        {
+            var relative = GetRelativeSubPath(normalizedPath, sourceFolders.AppDataRoaming);
+            return Path.Combine(TokenAppData, relative);
+        }
+
+        if (IsPathUnder(normalizedPath, sourceFolders.Documents))
+        {
+            var relative = GetRelativeSubPath(normalizedPath, sourceFolders.Documents);
             return Path.Combine(TokenDocuments, relative);
         }
 
-        if (normalizedPath.StartsWith(sourceFolders.SavedGames, StringComparison.OrdinalIgnoreCase))
+        if (IsPathUnder(normalizedPath, sourceFolders.SavedGames))
         {
-            var relative = normalizedPath.Substring(sourceFolders.SavedGames.Length).TrimStart('\\', '/');
+            var relative = GetRelativeSubPath(normalizedPath, sourceFolders.SavedGames);
             return Path.Combine(TokenSavedGames, relative);
         }
 
-        if (normalizedPath.StartsWith(sourceFolders.UserProfile, StringComparison.OrdinalIgnoreCase))
+        if (IsPathUnder(normalizedPath, sourceFolders.UserProfile))
         {
-            var relative = normalizedPath.Substring(sourceFolders.UserProfile.Length).TrimStart('\\', '/');
+            var relative = GetRelativeSubPath(normalizedPath, sourceFolders.UserProfile);
             return Path.Combine(TokenUserProfile, relative);
         }
 
         return normalizedPath;
+    }
+
+    private static bool IsPathUnder(string path, string basePath)
+    {
+        if (string.IsNullOrWhiteSpace(path) || string.IsNullOrWhiteSpace(basePath)) return false;
+        var normPath = Path.GetFullPath(path).TrimEnd('\\', '/');
+        var normBase = Path.GetFullPath(basePath).TrimEnd('\\', '/');
+        return normPath.Equals(normBase, StringComparison.OrdinalIgnoreCase)
+            || normPath.StartsWith(normBase + "\\", StringComparison.OrdinalIgnoreCase)
+            || normPath.StartsWith(normBase + "/", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetRelativeSubPath(string path, string basePath)
+    {
+        var normPath = Path.GetFullPath(path);
+        var normBase = Path.GetFullPath(basePath).TrimEnd('\\', '/');
+        if (normPath.Length <= normBase.Length) return string.Empty;
+        return normPath.Substring(normBase.Length).TrimStart('\\', '/');
     }
 
     /// <summary>
@@ -151,7 +170,20 @@ public static class PathVariableConverter
         else if (result.StartsWith(TokenLocalAppData, StringComparison.OrdinalIgnoreCase))
         {
             var relative = result.Substring(TokenLocalAppData.Length).TrimStart('\\', '/');
-            result = Path.Combine(targetFolders.AppDataLocal, relative);
+            // Correção inteligente para backups legados que salvaram LocalLow como %LOCALAPPDATA%\Low\...
+            if (relative.StartsWith("Low\\", StringComparison.OrdinalIgnoreCase) || relative.StartsWith("Low/", StringComparison.OrdinalIgnoreCase))
+            {
+                var correctedRelative = relative.Substring(4).TrimStart('\\', '/');
+                result = Path.Combine(targetFolders.AppDataLocalLow, correctedRelative);
+            }
+            else if (string.Equals(relative, "Low", StringComparison.OrdinalIgnoreCase))
+            {
+                result = targetFolders.AppDataLocalLow;
+            }
+            else
+            {
+                result = Path.Combine(targetFolders.AppDataLocal, relative);
+            }
         }
         else if (result.StartsWith(TokenAppData, StringComparison.OrdinalIgnoreCase))
         {
@@ -161,6 +193,11 @@ public static class PathVariableConverter
         else if (result.StartsWith(TokenAppDataLocalLow, StringComparison.OrdinalIgnoreCase))
         {
             var relative = result.Substring(TokenAppDataLocalLow.Length).TrimStart('\\', '/');
+            result = Path.Combine(targetFolders.AppDataLocalLow, relative);
+        }
+        else if (result.StartsWith("%APPDATALOCALLOW%", StringComparison.OrdinalIgnoreCase))
+        {
+            var relative = result.Substring("%APPDATALOCALLOW%".Length).TrimStart('\\', '/');
             result = Path.Combine(targetFolders.AppDataLocalLow, relative);
         }
         else if (result.StartsWith(TokenDocuments, StringComparison.OrdinalIgnoreCase))
@@ -222,6 +259,16 @@ public static class PathVariableConverter
 
         // Remapeia pastas de jogos com SteamID64 ou SteamID3 (ex: FromSoftware, Palworld, etc.)
         result = RemapSteamIdInPath(result, options);
+
+        // Segurança final: Windows não possui pasta oficial "AppData\Local\Low", jogos Unity/outros usam "AppData\LocalLow"
+        if (result.Contains("\\AppData\\Local\\Low\\", StringComparison.OrdinalIgnoreCase))
+        {
+            result = result.Replace("\\AppData\\Local\\Low\\", "\\AppData\\LocalLow\\", StringComparison.OrdinalIgnoreCase);
+        }
+        else if (result.EndsWith("\\AppData\\Local\\Low", StringComparison.OrdinalIgnoreCase))
+        {
+            result = result.Substring(0, result.Length - "\\AppData\\Local\\Low".Length) + "\\AppData\\LocalLow";
+        }
 
         return Path.GetFullPath(result);
     }

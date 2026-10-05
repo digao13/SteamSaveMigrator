@@ -90,4 +90,50 @@ public class PathVariableConverterTests
         var expected = Path.GetFullPath(@"D:\Steam\userdata\87654321\1091500\remote\sav.dat");
         Assert.Equal(expected, resolved);
     }
+
+    [Fact]
+    public void Should_Tokenize_And_Resolve_LocalLow_Without_Colliding_With_Local()
+    {
+        var localLowPath = @"C:\Users\USUARIO_ORIGEM\AppData\LocalLow\Studio Doodal\Solateria\76561198041671480\SaveData.txt";
+        var sourceProfile = @"C:\Users\USUARIO_ORIGEM";
+        var targetProfile = @"C:\Users\NOVO_USUARIO";
+
+        var token = PathVariableConverter.Tokenize(localLowPath, sourceProfile);
+        Assert.False(token.StartsWith("%LOCALAPPDATA%\\Low", System.StringComparison.OrdinalIgnoreCase), "LocalLow não pode ser tokenizado como %LOCALAPPDATA%\\Low");
+        Assert.Contains("LocalLow", token);
+
+        var options = new PathConversionOptions
+        {
+            SourceUsername = "USUARIO_ORIGEM",
+            SourceUserProfile = sourceProfile,
+            TargetUsername = "NOVO_USUARIO",
+            TargetUserProfile = targetProfile,
+            SourceSteamId3 = 81405752,
+            TargetSteamId3 = 1879694565
+        };
+
+        var resolved = PathVariableConverter.Resolve(token, options);
+        var expected = Path.GetFullPath(@"C:\Users\NOVO_USUARIO\AppData\LocalLow\Studio Doodal\Solateria\76561199839960293\SaveData.txt");
+        Assert.Equal(expected, resolved);
+        Assert.DoesNotContain(@"\AppData\Local\Low", resolved);
+    }
+
+    [Fact]
+    public void Should_Resolve_Legacy_LocalLow_In_LocalAppData_To_Real_LocalLow()
+    {
+        // Backups legados antigos que foram tokenizados com %LOCALAPPDATA%\Low\...
+        var legacyToken = @"%LOCALAPPDATA%\Low\Studio Doodal\Solateria\76561198041671480\SaveData.txt";
+        var options = new PathConversionOptions
+        {
+            TargetUsername = "Arianne",
+            TargetUserProfile = @"C:\Users\Arianne",
+            SourceSteamId3 = 81405752,
+            TargetSteamId3 = 1879694565
+        };
+
+        var resolved = PathVariableConverter.Resolve(legacyToken, options);
+        var expected = Path.GetFullPath(@"C:\Users\Arianne\AppData\LocalLow\Studio Doodal\Solateria\76561199839960293\SaveData.txt");
+        Assert.Equal(expected, resolved);
+        Assert.DoesNotContain(@"\AppData\Local\Low", resolved);
+    }
 }
