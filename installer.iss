@@ -1,4 +1,4 @@
-; Script de Instalação do SteamSave Migrator v1.2.8
+; Script de Instalação do SteamSave Migrator v1.3.0
 ; Gerado para instalação completa, autônoma e com todas as dependências incluídas
 
 #define MyAppName "SteamSave Migrator"

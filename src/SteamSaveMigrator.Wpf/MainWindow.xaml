@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:SteamSaveMigrator.Wpf.ViewModels"
         mc:Ignorable="d"
-        Title="SteamSave Migrator v1.2.8 • Migrador, Conquistas e Conversor de Saves Steam"
+        Title="{Binding WindowTitle, FallbackValue='SteamSave Migrator v1.3.0 • Migrador, Conquistas e Conversor de Saves Steam'}"
         Height="800" Width="1180"
         MinHeight="680" MinWidth="950"
         WindowStartupLocation="CenterScreen"
@@ -42,7 +42,7 @@
                             <TextBlock Text="SteamSave" FontSize="21" FontWeight="Bold" Foreground="#FFFFFF" />
                             <TextBlock Text="Migrator" FontSize="21" FontWeight="Light" Foreground="{StaticResource BrushAccent}" />
                             <Border Background="{StaticResource BrushAccent}" CornerRadius="9" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Text="v1.2.8" FontSize="11.5" FontWeight="Bold" Foreground="#0A0F18" />
+                                <TextBlock Text="{Binding AppVersionDisplay, FallbackValue='v1.3.0'}" FontSize="11.5" FontWeight="Bold" Foreground="#0A0F18" />
                             </Border>
                         </StackPanel>
                         <TextBlock Text="Backup em Lote, Conquistas e Restauração Automática Transparente entre Perfis" FontSize="12.5" Foreground="{StaticResource BrushTextSecondary}" Margin="0,2,0,0" />
@@ -1142,7 +1142,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource BrushTextSecondary}" />
-                <TextBlock Grid.Column="1" Text="SteamSaveMigrator v1.2.8 • Backup em Lote, Conquistas &amp; Restauração Automática" FontSize="12" Foreground="{StaticResource BrushTextMuted}" />
+                <TextBlock Grid.Column="1" Text="{Binding FooterStatusDisplay, FallbackValue='SteamSaveMigrator v1.3.0 • Backup em Lote, Conquistas &amp; Restauração Automática'}" FontSize="12" Foreground="{StaticResource BrushTextMuted}" />
             </Grid>
         </Border>
     </Grid>
