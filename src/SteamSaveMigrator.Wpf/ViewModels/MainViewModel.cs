@@ -25,7 +25,7 @@ public class MainViewModel : ViewModelBase
     private readonly SteamSaveMigratorEngine _engine = new();
 
     // VersÃ£o da AplicaÃ§Ã£o
-    public string AppVersion => typeof(MainViewModel).Assembly.GetName().Version is { } v ? $"{v.Major}.{v.Minor}.{v.Build}" : "1.4.0";
+    public string AppVersion => typeof(MainViewModel).Assembly.GetName().Version is { } v ? $"{v.Major}.{v.Minor}.{v.Build}" : "1.4.1";
     public string AppVersionDisplay => $"v{AppVersion}";
     public string WindowTitle => $"SteamSave Migrator {AppVersionDisplay} â€¢ Migrador, Conquistas e Conversor de Saves Steam";
     public string FooterStatusDisplay => $"SteamSaveMigrator {AppVersionDisplay} â€¢ Backup em Lote, Conquistas & RestauraÃ§Ã£o AutomÃ¡tica";
@@ -587,7 +587,7 @@ public class MainViewModel : ViewModelBase
         catch (Exception ex)
         {
             BackupProgressText = "Falha no backup.";
-            BackupResultSummary = $"âŒ Erro ao criar backup: {ex.Message}";
+            BackupResultSummary = $"Ã¢ÂÅ’ Erro ao criar backup: {ex.Message}";
         }
         finally
         {
@@ -639,7 +639,7 @@ public class MainViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            BatchBackupSummary = $"âŒ Erro durante o backup em lote: {ex.Message}";
+            BatchBackupSummary = $"Ã¢ÂÅ’ Erro durante o backup em lote: {ex.Message}";
         }
         finally
         {
@@ -828,15 +828,15 @@ public class MainViewModel : ViewModelBase
 
         if (RestoreZipQueue.Count > 1)
         {
-            AutoMigrationDescription = $"âš¡ RestauraÃ§Ã£o em lote de {RestoreZipQueue.Count} backups com 1 clique!\n" +
+            AutoMigrationDescription = $"Ã¢Å¡Â¡ RestauraÃ§Ã£o em lote de {RestoreZipQueue.Count} backups com 1 clique!\n" +
                                        $"â€¢ UsuÃ¡rio Windows Destino: '{effectiveTargetUser}'" +
                                        steamMigrationText + achTag;
         }
         else if (RestoreManifest != null)
         {
             AutoMigrationDescription = $"ðŸŽ¯ MigraÃ§Ã£o AutomÃ¡tica Detectada:\n" +
-                                       $"â€¢ UsuÃ¡rio Windows: {RestoreSourceUser} âž” {effectiveTargetUser}\n" +
-                                       $"â€¢ Pasta Perfil: {RestoreSourceProfile} âž” {effectiveTargetProfile}" +
+                                       $"â€¢ UsuÃ¡rio Windows: {RestoreSourceUser} Ã¢Å¾â€ {effectiveTargetUser}\n" +
+                                       $"â€¢ Pasta Perfil: {RestoreSourceProfile} Ã¢Å¾â€ {effectiveTargetProfile}" +
                                        steamMigrationText + achTag;
         }
     }
@@ -918,7 +918,7 @@ public class MainViewModel : ViewModelBase
                     }
                     else if (result.AchievementSyncDetails.ActiveConnectedSteamId3.HasValue)
                     {
-                        achMsg = $" â€¢ âš ï¸ Â Conquistas: Steam conectada em '{result.AchievementSyncDetails.ActiveConnectedPersona}'. Entre na conta de destino na Steam e use 'Sincronizar Conquistas'.";
+                        achMsg = $" â€¢ âš ï¸ Conquistas: Steam conectada em '{result.AchievementSyncDetails.ActiveConnectedPersona}'. Entre na conta de destino na Steam e use 'Sincronizar Conquistas'.";
                     }
                     else
                     {
@@ -936,23 +936,23 @@ public class MainViewModel : ViewModelBase
 
                 RestoreProgressText = RestoreDryRun ? "SimulaÃ§Ã£o concluÃ­da com sucesso!" : "RestauraÃ§Ã£o automÃ¡tica concluÃ­da com sucesso!";
                 var steamRunningWarning = !RestoreDryRun && System.Diagnostics.Process.GetProcessesByName("steam").Length > 0
-                    ? " âš ï¸ Â AVISO: A Steam estÃ¡ em execuÃ§Ã£o. Feche e reabra a Steam para que ela recarregue os saves e conquistas sincronizadas antes de abrir o jogo!"
+                    ? " âš ï¸ AVISO: A Steam estÃ¡ em execuÃ§Ã£o. Feche e reabra a Steam para que ela recarregue os saves e conquistas sincronizadas antes de abrir o jogo!"
                     : "";
 
                 RestoreResultSummary = RestoreDryRun
-                    ? $"Ã°Å¸â€Â SimulaÃ§Ã£o OK: {result.SuccessCount} arquivos mapeados para '{targetUser}'{steamSuccess}{achMsg} sem gravar no disco."
+                    ? $"ðŸ”ÂÂ SimulaÃ§Ã£o OK: {result.SuccessCount} arquivos mapeados para '{targetUser}'{steamSuccess}{achMsg} sem gravar no disco."
                     : $"ðŸŽ‰ Sucesso! {result.SuccessCount} arquivo(s) restaurados no perfil do usuÃ¡rio '{targetUser}'{steamSuccess}{achMsg}!{steamRunningWarning}";
             }
             else
             {
                 RestoreProgressText = "RestauraÃ§Ã£o finalizada com pendÃªncias.";
-                RestoreResultSummary = $"âš ï¸ Â Finalizado com {result.ErrorCount} erro(s). Veja os detalhes abaixo.";
+                RestoreResultSummary = $"âš ï¸ Finalizado com {result.ErrorCount} erro(s). Veja os detalhes abaixo.";
             }
         }
         catch (Exception ex)
         {
             RestoreProgressText = "Erro na restauraÃ§Ã£o.";
-            RestoreResultSummary = $"âŒ Erro crÃ­tico: {ex.Message}";
+            RestoreResultSummary = $"Ã¢ÂÅ’ Erro crÃ­tico: {ex.Message}";
         }
         finally
         {
@@ -1008,13 +1008,13 @@ public class MainViewModel : ViewModelBase
             else
             {
                 RestoreProgressText = "RestauraÃ§Ã£o em lote finalizada com erros.";
-                RestoreResultSummary = $"âš ï¸ Â ConcluÃ­do: {batchResult.SuccessCount} sucessos, {batchResult.FailureCount} falhas.";
+                RestoreResultSummary = $"âš ï¸ ConcluÃ­do: {batchResult.SuccessCount} sucessos, {batchResult.FailureCount} falhas.";
             }
         }
         catch (Exception ex)
         {
             RestoreProgressText = "Erro na restauraÃ§Ã£o em lote.";
-            RestoreResultSummary = $"âŒ Erro: {ex.Message}";
+            RestoreResultSummary = $"Ã¢ÂÅ’ Erro: {ex.Message}";
         }
         finally
         {
@@ -1948,12 +1948,12 @@ public class MainViewModel : ViewModelBase
                 }
                 else
                 {
-                    CredentialsStatusText = "âŒ NÃ£o foi possÃ­vel extrair client_id e client_secret do arquivo selecionado.";
+                    CredentialsStatusText = "Ã¢ÂÅ’ NÃ£o foi possÃ­vel extrair client_id e client_secret do arquivo selecionado.";
                 }
             }
             catch (Exception ex)
             {
-                CredentialsStatusText = $"âŒ Erro ao importar: {ex.Message}";
+                CredentialsStatusText = $"Ã¢ÂÅ’ Erro ao importar: {ex.Message}";
             }
         }
     }
@@ -1962,7 +1962,7 @@ public class MainViewModel : ViewModelBase
     {
         if (string.IsNullOrWhiteSpace(CustomClientId) || string.IsNullOrWhiteSpace(CustomClientSecret))
         {
-            CredentialsStatusText = "âŒ Preencha tanto o Client ID quanto o Client Secret.";
+            CredentialsStatusText = "Ã¢ÂÅ’ Preencha tanto o Client ID quanto o Client Secret.";
             return;
         }
 
@@ -1976,7 +1976,7 @@ public class MainViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            CredentialsStatusText = $"âŒ Erro ao salvar credenciais: {ex.Message}";
+            CredentialsStatusText = $"Ã¢ÂÅ’ Erro ao salvar credenciais: {ex.Message}";
         }
     }
 
@@ -2090,7 +2090,7 @@ public class MainViewModel : ViewModelBase
                 var targetUserMsg = !string.IsNullOrWhiteSpace(targetUser) ? targetUser : Environment.UserName;
 
                 var steamRunningWarning = System.Diagnostics.Process.GetProcessesByName("steam").Length > 0
-                    ? " âš ï¸ Â AVISO: A Steam estÃ¡ em execuÃ§Ã£o. Feche e reabra a Steam para que ela recarregue os saves sincronizados antes de abrir o jogo!"
+                    ? " âš ï¸ AVISO: A Steam estÃ¡ em execuÃ§Ã£o. Feche e reabra a Steam para que ela recarregue os saves sincronizados antes de abrir o jogo!"
                     : "";
 
                 var achMsg = res.AchievementsSynced > 0
@@ -2102,13 +2102,13 @@ public class MainViewModel : ViewModelBase
             }
             else
             {
-                CloudResultSummary = $"âŒ Falha ao restaurar: {res.ErrorCount} erro(s).";
+                CloudResultSummary = $"Ã¢ÂÅ’ Falha ao restaurar: {res.ErrorCount} erro(s).";
                 StatusMessage = "Erro ao restaurar backup da nuvem.";
             }
         }
         catch (Exception ex)
         {
-            CloudResultSummary = $"âŒ Erro inesperado: {ex.Message}";
+            CloudResultSummary = $"Ã¢ÂÅ’ Erro inesperado: {ex.Message}";
             StatusMessage = "Falha durante a restauraÃ§Ã£o do Google Drive.";
         }
         finally
@@ -2197,13 +2197,13 @@ public class MainViewModel : ViewModelBase
                     break;
 
                 case GameWatcherEventType.GameExited:
-                    logLine = $"[{time}] â¹ï¸ JOGO FECHADO: {gameName}! Aguardando dados de save...";
+                    logLine = $"[{time}] Ã¢Â¹Ã¯Â¸ JOGO FECHADO: {gameName}! Aguardando dados de save...";
                     WatcherLastEventText = $"Jogo fechado: {gameName}. Preparando backup...";
                     NotificationRequested?.Invoke("Jogo Steam Fechado", $"ðŸŽ® {gameName} foi fechado. Realizando backup automÃ¡tico...", false);
                     break;
 
                 case GameWatcherEventType.BackupStarted:
-                    logLine = $"[{time}] Ã°Å¸â€™Â¾ BACKUP INICIADO: Compactando saves de {gameName}...";
+                    logLine = $"[{time}] ðŸ’¾ BACKUP INICIADO: Compactando saves de {gameName}...";
                     break;
 
                 case GameWatcherEventType.BackupCompleted:
@@ -2213,7 +2213,7 @@ public class MainViewModel : ViewModelBase
                     break;
 
                 case GameWatcherEventType.CloudUploadStarted:
-                    logLine = $"[{time}] Ã¢ËœÂÃ¯Â¸Â UPLOAD NUVEM: Enviando saves de {gameName} para o Google Drive...";
+                    logLine = $"[{time}] â˜ï¸ UPLOAD NUVEM: Enviando saves de {gameName} para o Google Drive...";
                     break;
 
                 case GameWatcherEventType.CloudUploadCompleted:
@@ -2224,7 +2224,7 @@ public class MainViewModel : ViewModelBase
                     break;
 
                 case GameWatcherEventType.Error:
-                    logLine = $"[{time}] âŒ ERRO: {e.Message}";
+                    logLine = $"[{time}] Ã¢ÂÅ’ ERRO: {e.Message}";
                     WatcherLastEventText = $"Erro: {e.Message}";
                     if (e.Message.Contains("nÃ£o autenticado") || e.Message.Contains("insufficient") || e.Message.Contains("Forbidden"))
                     {
@@ -2436,10 +2436,11 @@ public class MainViewModel : ViewModelBase
         catch (Exception ex)
         {
             StatusMessage = $"Erro ao sincronizar conquistas: {ex.Message}";
-            RestoreResultSummary = $"âŒ Erro ao sincronizar conquistas: {ex.Message}";
+            RestoreResultSummary = $"Ã¢ÂÅ’ Erro ao sincronizar conquistas: {ex.Message}";
         }
     }
 }
+
 
 
 
