@@ -59,6 +59,11 @@ public static class AppSettingsService
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
+    /// <summary>
+    /// Caminho alternativo de arquivo exclusivo para testes unitários isolados.
+    /// </summary>
+    public static string? OverrideConfigPathForTesting { get; set; }
+
     private static string GetUserConfigPath()
     {
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
@@ -83,10 +88,84 @@ public static class AppSettingsService
         return Path.Combine(dir, "settings.json");
     }
 
+    private static string GetLocalAppConfigPath()
+    {
+        try
+        {
+            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            return Path.Combine(baseDir, "settings.json");
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Normaliza e valida um caminho de diretório (remove aspas, espaços extras e expande variáveis).
+    /// </summary>
+    public static string NormalizeDirectoryPath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return string.Empty;
+        var trimmed = path.Trim().Trim('\"', '\'').Trim();
+        if (string.IsNullOrWhiteSpace(trimmed)) return string.Empty;
+
+        try
+        {
+            trimmed = Environment.ExpandEnvironmentVariables(trimmed);
+            return Path.GetFullPath(trimmed).TrimEnd('\\', '/');
+        }
+        catch
+        {
+            return trimmed.TrimEnd('\\', '/');
+        }
+    }
+
+    /// <summary>
+    /// Retorna o diretório de backups efetivo configurado ou o padrão de perfil do usuário.
+    /// </summary>
+    public static string GetEffectiveBackupDirectory()
+    {
+        var settings = LoadSettings();
+        var normalized = NormalizeDirectoryPath(settings.CustomBackupDirectory);
+        if (!string.IsNullOrWhiteSpace(normalized))
+        {
+            return normalized;
+        }
+
+        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "SteamSavesBackup");
+    }
+
     public static UserSettings LoadSettings()
     {
+        if (!string.IsNullOrWhiteSpace(OverrideConfigPathForTesting))
+        {
+            if (File.Exists(OverrideConfigPathForTesting))
+            {
+                try
+                {
+                    var json = File.ReadAllText(OverrideConfigPathForTesting);
+                    var testSettings = JsonSerializer.Deserialize<UserSettings>(json, JsonOptions) ?? new UserSettings();
+                    testSettings.CustomBackupDirectory = NormalizeDirectoryPath(testSettings.CustomBackupDirectory);
+                    return testSettings;
+                }
+                catch { }
+            }
+            return new UserSettings();
+        }
+
         var userPath = GetUserConfigPath();
         var commonPath = GetCommonConfigPath();
+        var localPath = GetLocalAppConfigPath();
+
+        UserSettings? userSettings = null;
+        DateTime userTime = DateTime.MinValue;
+
+        UserSettings? commonSettings = null;
+        DateTime commonTime = DateTime.MinValue;
+
+        UserSettings? localSettings = null;
+        DateTime localTime = DateTime.MinValue;
 
         // 1. Tenta carregar do AppData do usuário
         if (File.Exists(userPath))
@@ -94,39 +173,98 @@ public static class AppSettingsService
             try
             {
                 var json = File.ReadAllText(userPath);
-                var settings = JsonSerializer.Deserialize<UserSettings>(json, JsonOptions);
-                if (settings != null) return settings;
+                userSettings = JsonSerializer.Deserialize<UserSettings>(json, JsonOptions);
+                userTime = File.GetLastWriteTimeUtc(userPath);
             }
             catch { }
         }
 
-        // 2. Fallback para ProgramData compartilhado
+        // 2. Tenta carregar do ProgramData compartilhado
         if (File.Exists(commonPath))
         {
             try
             {
                 var json = File.ReadAllText(commonPath);
-                var settings = JsonSerializer.Deserialize<UserSettings>(json, JsonOptions);
-                if (settings != null)
-                {
-                    // Copia para o usuário local
-                    try { File.WriteAllText(userPath, json); } catch { }
-                    return settings;
-                }
+                commonSettings = JsonSerializer.Deserialize<UserSettings>(json, JsonOptions);
+                commonTime = File.GetLastWriteTimeUtc(commonPath);
             }
             catch { }
         }
 
-        return new UserSettings();
+        // 3. Tenta carregar do diretório local da aplicação
+        if (!string.IsNullOrWhiteSpace(localPath) && File.Exists(localPath))
+        {
+            try
+            {
+                var json = File.ReadAllText(localPath);
+                localSettings = JsonSerializer.Deserialize<UserSettings>(json, JsonOptions);
+                localTime = File.GetLastWriteTimeUtc(localPath);
+            }
+            catch { }
+        }
+
+        // Seleciona a fonte mais recente ou que possui o diretório de backup configurado
+        UserSettings? chosen = null;
+
+        // Lista de candidatos com suas respectivas datas
+        var candidates = new (UserSettings? settings, DateTime time)[]
+        {
+            (userSettings, userTime),
+            (commonSettings, commonTime),
+            (localSettings, localTime)
+        }
+        .Where(c => c.settings != null)
+        .OrderByDescending(c => !string.IsNullOrWhiteSpace(c.settings!.CustomBackupDirectory))
+        .ThenByDescending(c => c.time)
+        .ToList();
+
+        if (candidates.Count > 0)
+        {
+            chosen = candidates[0].settings;
+        }
+
+        chosen ??= new UserSettings();
+
+        // Se uma fonte tinha CustomBackupDirectory mas a escolhida não, preserva o diretório
+        if (string.IsNullOrWhiteSpace(chosen.CustomBackupDirectory))
+        {
+            var withDir = candidates.FirstOrDefault(c => !string.IsNullOrWhiteSpace(c.settings!.CustomBackupDirectory));
+            if (withDir.settings != null)
+            {
+                chosen.CustomBackupDirectory = withDir.settings.CustomBackupDirectory;
+            }
+        }
+
+        chosen.CustomBackupDirectory = NormalizeDirectoryPath(chosen.CustomBackupDirectory);
+
+        return chosen;
     }
 
     public static void SaveSettings(UserSettings settings)
     {
         try
         {
+            settings.CustomBackupDirectory = NormalizeDirectoryPath(settings.CustomBackupDirectory);
+
+            if (!string.IsNullOrWhiteSpace(OverrideConfigPathForTesting))
+            {
+                var testJson = JsonSerializer.Serialize(settings, JsonOptions);
+                var testDir = Path.GetDirectoryName(OverrideConfigPathForTesting);
+                if (!string.IsNullOrWhiteSpace(testDir) && !Directory.Exists(testDir))
+                {
+                    Directory.CreateDirectory(testDir);
+                }
+                File.WriteAllText(OverrideConfigPathForTesting, testJson);
+                return;
+            }
+
             var json = JsonSerializer.Serialize(settings, JsonOptions);
             var userPath = GetUserConfigPath();
-            File.WriteAllText(userPath, json);
+            try
+            {
+                File.WriteAllText(userPath, json);
+            }
+            catch { }
 
             var commonPath = GetCommonConfigPath();
             try
@@ -135,6 +273,33 @@ public static class AppSettingsService
                 EnsureFilePermissions(commonPath);
             }
             catch { }
+
+            var localPath = GetLocalAppConfigPath();
+            if (!string.IsNullOrWhiteSpace(localPath))
+            {
+                try
+                {
+                    File.WriteAllText(localPath, json);
+                }
+                catch { }
+            }
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// Atualiza e persiste imediatamente apenas o diretório de backups do usuário.
+    /// </summary>
+    public static void UpdateCustomBackupDirectory(string newDirectory)
+    {
+        var normalized = NormalizeDirectoryPath(newDirectory);
+        if (string.IsNullOrWhiteSpace(normalized)) return;
+
+        try
+        {
+            var settings = LoadSettings();
+            settings.CustomBackupDirectory = normalized;
+            SaveSettings(settings);
         }
         catch { }
     }

@@ -254,26 +254,40 @@ public class AutoRestoreAndBatchTests : IDisposable
     [Fact]
     public void Should_Save_And_Load_UserSettings_Correctly()
     {
-        var settings = new UserSettings
+        var testConfig = Path.Combine(Path.GetTempPath(), "SteamSaveMigrator_TestBatchConfig_" + Guid.NewGuid().ToString("N") + ".json");
+        try
         {
-            CustomBackupDirectory = @"C:\BackupsPersonalizados",
-            AutoStartWatcherOnLaunch = true,
-            WatcherAutoUpload = true,
-            WatcherPollInterval = 5,
-            WatcherPostExitDelay = 7,
-            StartWithWindows = true,
-            MinimizeToTray = true
-        };
+            AppSettingsService.OverrideConfigPathForTesting = testConfig;
 
-        AppSettingsService.SaveSettings(settings);
-        var loaded = AppSettingsService.LoadSettings();
+            var settings = new UserSettings
+            {
+                CustomBackupDirectory = @"C:\BackupsPersonalizados",
+                AutoStartWatcherOnLaunch = true,
+                WatcherAutoUpload = true,
+                WatcherPollInterval = 5,
+                WatcherPostExitDelay = 7,
+                StartWithWindows = true,
+                MinimizeToTray = true
+            };
 
-        Assert.NotNull(loaded);
-        Assert.Equal(@"C:\BackupsPersonalizados", loaded.CustomBackupDirectory);
-        Assert.True(loaded.AutoStartWatcherOnLaunch);
-        Assert.True(loaded.WatcherAutoUpload);
-        Assert.Equal(5, loaded.WatcherPollInterval);
-        Assert.Equal(7, loaded.WatcherPostExitDelay);
+            AppSettingsService.SaveSettings(settings);
+            var loaded = AppSettingsService.LoadSettings();
+
+            Assert.NotNull(loaded);
+            Assert.Equal(@"C:\BackupsPersonalizados", loaded.CustomBackupDirectory);
+            Assert.True(loaded.AutoStartWatcherOnLaunch);
+            Assert.True(loaded.WatcherAutoUpload);
+            Assert.Equal(5, loaded.WatcherPollInterval);
+            Assert.Equal(7, loaded.WatcherPostExitDelay);
+        }
+        finally
+        {
+            AppSettingsService.OverrideConfigPathForTesting = null;
+            if (File.Exists(testConfig))
+            {
+                File.Delete(testConfig);
+            }
+        }
     }
 
     [Fact]

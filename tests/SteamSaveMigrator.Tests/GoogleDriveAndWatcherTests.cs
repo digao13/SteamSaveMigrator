@@ -402,21 +402,35 @@ public class GoogleDriveAndWatcherTests : IDisposable
     [Fact]
     public void UserSettings_OpenSteamOnStartup_And_Profiles_Persist()
     {
-        var settings = new UserSettings
+        var testConfig = Path.Combine(Path.GetTempPath(), "SteamSaveMigrator_TestLaunchConfig_" + Guid.NewGuid().ToString("N") + ".json");
+        try
         {
-            OpenSteamOnStartup = true,
-            WatcherAutoBackup = true,
-            LastTargetSteamId3 = 81405752,
-            LastTargetWindowsUsername = "Ariane"
-        };
+            AppSettingsService.OverrideConfigPathForTesting = testConfig;
 
-        AppSettingsService.SaveSettings(settings);
-        var loaded = AppSettingsService.LoadSettings();
+            var settings = new UserSettings
+            {
+                OpenSteamOnStartup = true,
+                WatcherAutoBackup = true,
+                LastTargetSteamId3 = 81405752,
+                LastTargetWindowsUsername = "Ariane"
+            };
 
-        Assert.True(loaded.OpenSteamOnStartup);
-        Assert.True(loaded.WatcherAutoBackup);
-        Assert.Equal(81405752u, loaded.LastTargetSteamId3);
-        Assert.Equal("Ariane", loaded.LastTargetWindowsUsername);
+            AppSettingsService.SaveSettings(settings);
+            var loaded = AppSettingsService.LoadSettings();
+
+            Assert.True(loaded.OpenSteamOnStartup);
+            Assert.True(loaded.WatcherAutoBackup);
+            Assert.Equal(81405752u, loaded.LastTargetSteamId3);
+            Assert.Equal("Ariane", loaded.LastTargetWindowsUsername);
+        }
+        finally
+        {
+            AppSettingsService.OverrideConfigPathForTesting = null;
+            if (File.Exists(testConfig))
+            {
+                File.Delete(testConfig);
+            }
+        }
     }
 
     [Fact]

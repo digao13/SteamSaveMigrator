@@ -25,7 +25,7 @@ public class MainViewModel : ViewModelBase
     private readonly SteamSaveMigratorEngine _engine = new();
 
     // VersÃ£o da AplicaÃ§Ã£o
-    public string AppVersion => typeof(MainViewModel).Assembly.GetName().Version is { } v ? $"{v.Major}.{v.Minor}.{v.Build}" : "1.3.1";
+    public string AppVersion => typeof(MainViewModel).Assembly.GetName().Version is { } v ? $"{v.Major}.{v.Minor}.{v.Build}" : "1.4.0";
     public string AppVersionDisplay => $"v{AppVersion}";
     public string WindowTitle => $"SteamSave Migrator {AppVersionDisplay} â€¢ Migrador, Conquistas e Conversor de Saves Steam";
     public string FooterStatusDisplay => $"SteamSaveMigrator {AppVersionDisplay} â€¢ Backup em Lote, Conquistas & RestauraÃ§Ã£o AutomÃ¡tica";
@@ -152,14 +152,7 @@ public class MainViewModel : ViewModelBase
     {
         // Carrega configuraÃ§Ãµes persistidas do usuÃ¡rio (com suporte transparente entre perfis Windows)
         var userSettings = AppSettingsService.LoadSettings();
-        if (!string.IsNullOrWhiteSpace(userSettings.CustomBackupDirectory))
-        {
-            _batchBackupOutputDir = userSettings.CustomBackupDirectory;
-        }
-        else
-        {
-            _batchBackupOutputDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "SteamSavesBackup");
-        }
+        _batchBackupOutputDir = AppSettingsService.GetEffectiveBackupDirectory();
 
         try
         {
@@ -188,6 +181,7 @@ public class MainViewModel : ViewModelBase
         DeselectAllGamesCommand = new RelayCommand(() => SetSelectionForAll(false));
         SelectGamesWithSavesCommand = new RelayCommand(async () => await SelectOnlyGamesWithSavesAsync());
         GoToBatchBackupTabCommand = new RelayCommand(() => SelectedTabIndex = 1);
+        GoToGamesTabCommand = new RelayCommand(() => SelectedTabIndex = 0);
 
         // Comandos de Backup
         BrowseBackupOutputCommand = new RelayCommand(BrowseBackupOutput);
@@ -423,10 +417,21 @@ public class MainViewModel : ViewModelBase
         BackupGame = scanned;
         BackupLocations = new ObservableCollection<GameSaveLocation>(scanned.DetectedSaveLocations);
 
-        if (!Directory.Exists(_batchBackupOutputDir)) Directory.CreateDirectory(_batchBackupOutputDir);
+        var currentDir = AppSettingsService.NormalizeDirectoryPath(BatchBackupOutputDir);
+        if (string.IsNullOrWhiteSpace(currentDir))
+        {
+            currentDir = AppSettingsService.GetEffectiveBackupDirectory();
+            _batchBackupOutputDir = currentDir;
+        }
+
+        try
+        {
+            if (!Directory.Exists(currentDir)) Directory.CreateDirectory(currentDir);
+        }
+        catch { }
 
         var sanitized = string.Join("_", scanned.Name.Split(Path.GetInvalidFileNameChars())).Replace(" ", "_");
-        BackupZipPath = Path.Combine(_batchBackupOutputDir, $"{sanitized}_{scanned.AppId}_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
+        BackupZipPath = Path.Combine(currentDir, $"{sanitized}_{scanned.AppId}_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
 
         // Vai para a aba de Backup
         SelectedTabIndex = 1;
@@ -437,35 +442,50 @@ public class MainViewModel : ViewModelBase
 
     private void BrowseBackupOutput()
     {
+        var initialDir = !string.IsNullOrWhiteSpace(BackupZipPath) && Directory.Exists(Path.GetDirectoryName(BackupZipPath))
+            ? Path.GetDirectoryName(BackupZipPath)!
+            : (Directory.Exists(BatchBackupOutputDir) ? BatchBackupOutputDir : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+
         var sfd = new SaveFileDialog
         {
             Title = "Salvar arquivo de backup dos saves",
             Filter = "Arquivo Zip do SteamSaveMigrator (*.zip)|*.zip|Todos os arquivos (*.*)|*.*",
-            FileName = Path.GetFileName(BackupZipPath),
-            InitialDirectory = Path.GetDirectoryName(BackupZipPath) ?? _batchBackupOutputDir
+            FileName = !string.IsNullOrWhiteSpace(BackupZipPath) ? Path.GetFileName(BackupZipPath) : "backup.zip",
+            InitialDirectory = initialDir,
+            RestoreDirectory = true
         };
 
         if (sfd.ShowDialog() == true)
         {
             BackupZipPath = sfd.FileName;
+            var chosenFolder = Path.GetDirectoryName(sfd.FileName);
+            if (!string.IsNullOrWhiteSpace(chosenFolder))
+            {
+                ApplyBackupDirectoryChange(chosenFolder);
+                StatusMessage = $"Pasta de backups atualizada e salva: {chosenFolder}";
+            }
         }
     }
 
     private void BrowseBatchBackupOutputDir()
     {
+        var initialDir = Directory.Exists(BatchBackupOutputDir)
+            ? BatchBackupOutputDir
+            : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
         try
         {
             var dialog = new Microsoft.Win32.OpenFolderDialog
             {
                 Title = "Selecione a pasta onde os backups locais serÃ£o salvos",
-                InitialDirectory = Directory.Exists(BatchBackupOutputDir) ? BatchBackupOutputDir : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                InitialDirectory = initialDir,
                 Multiselect = false
             };
 
             if (dialog.ShowDialog() == true && !string.IsNullOrWhiteSpace(dialog.FolderName))
             {
-                BatchBackupOutputDir = dialog.FolderName;
-                StatusMessage = $"Pasta de backups alterada para: {dialog.FolderName}";
+                ApplyBackupDirectoryChange(dialog.FolderName);
+                StatusMessage = $"Pasta de backups alterada e salva permanentemente: {dialog.FolderName}";
             }
         }
         catch
@@ -477,7 +497,8 @@ public class MainViewModel : ViewModelBase
                 CheckFileExists = false,
                 CheckPathExists = true,
                 FileName = "Selecionar esta pasta",
-                InitialDirectory = Directory.Exists(BatchBackupOutputDir) ? BatchBackupOutputDir : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+                InitialDirectory = initialDir,
+                RestoreDirectory = true
             };
 
             if (ofd.ShowDialog() == true)
@@ -485,8 +506,8 @@ public class MainViewModel : ViewModelBase
                 var dir = Path.GetDirectoryName(ofd.FileName);
                 if (!string.IsNullOrWhiteSpace(dir))
                 {
-                    BatchBackupOutputDir = dir;
-                    StatusMessage = $"Pasta de backups alterada para: {dir}";
+                    ApplyBackupDirectoryChange(dir);
+                    StatusMessage = $"Pasta de backups alterada e salva permanentemente: {dir}";
                 }
             }
         }
@@ -516,9 +537,8 @@ public class MainViewModel : ViewModelBase
     private void ResetBackupOutputDir()
     {
         var defaultDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "SteamSavesBackup");
-        BatchBackupOutputDir = defaultDir;
-        if (!Directory.Exists(defaultDir)) Directory.CreateDirectory(defaultDir);
-        StatusMessage = $"Pasta de backups redefinida para o padrÃ£o: {defaultDir}";
+        ApplyBackupDirectoryChange(defaultDir);
+        StatusMessage = $"Pasta de backups redefinida e salva para o padrÃ£o: {defaultDir}";
     }
 
     private async Task StartBackupAsync()
@@ -629,16 +649,30 @@ public class MainViewModel : ViewModelBase
 
     private async Task BrowseRestoreZipAsync()
     {
+        var initialDir = Directory.Exists(BatchBackupOutputDir)
+            ? BatchBackupOutputDir
+            : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
         var ofd = new OpenFileDialog
         {
             Title = "Selecione o arquivo de backup (.zip)",
             Filter = "Arquivo de Backup (*.zip)|*.zip|Todos os arquivos (*.*)|*.*",
-            InitialDirectory = BatchBackupOutputDir,
+            InitialDirectory = initialDir,
+            RestoreDirectory = true,
             Multiselect = true
         };
 
-        if (ofd.ShowDialog() == true)
+        if (ofd.ShowDialog() == true && ofd.FileNames.Length > 0)
         {
+            var chosenDir = Path.GetDirectoryName(ofd.FileNames[0]);
+            if (!string.IsNullOrWhiteSpace(chosenDir) && Directory.Exists(chosenDir))
+            {
+                if (!string.Equals(chosenDir, BatchBackupOutputDir, StringComparison.OrdinalIgnoreCase))
+                {
+                    ApplyBackupDirectoryChange(chosenDir);
+                }
+            }
+
             if (ofd.FileNames.Length > 1)
             {
                 RestoreZipQueue = new ObservableCollection<string>(ofd.FileNames);
@@ -884,7 +918,7 @@ public class MainViewModel : ViewModelBase
                     }
                     else if (result.AchievementSyncDetails.ActiveConnectedSteamId3.HasValue)
                     {
-                        achMsg = $" â€¢ âš ï¸ Conquistas: Steam conectada em '{result.AchievementSyncDetails.ActiveConnectedPersona}'. Entre na conta de destino na Steam e use 'Sincronizar Conquistas'.";
+                        achMsg = $" â€¢ âš ï¸ Â Conquistas: Steam conectada em '{result.AchievementSyncDetails.ActiveConnectedPersona}'. Entre na conta de destino na Steam e use 'Sincronizar Conquistas'.";
                     }
                     else
                     {
@@ -902,17 +936,17 @@ public class MainViewModel : ViewModelBase
 
                 RestoreProgressText = RestoreDryRun ? "SimulaÃ§Ã£o concluÃ­da com sucesso!" : "RestauraÃ§Ã£o automÃ¡tica concluÃ­da com sucesso!";
                 var steamRunningWarning = !RestoreDryRun && System.Diagnostics.Process.GetProcessesByName("steam").Length > 0
-                    ? " âš ï¸ AVISO: A Steam estÃ¡ em execuÃ§Ã£o. Feche e reabra a Steam para que ela recarregue os saves e conquistas sincronizadas antes de abrir o jogo!"
+                    ? " âš ï¸ Â AVISO: A Steam estÃ¡ em execuÃ§Ã£o. Feche e reabra a Steam para que ela recarregue os saves e conquistas sincronizadas antes de abrir o jogo!"
                     : "";
 
                 RestoreResultSummary = RestoreDryRun
-                    ? $"ðŸ” SimulaÃ§Ã£o OK: {result.SuccessCount} arquivos mapeados para '{targetUser}'{steamSuccess}{achMsg} sem gravar no disco."
+                    ? $"Ã°Å¸â€Â SimulaÃ§Ã£o OK: {result.SuccessCount} arquivos mapeados para '{targetUser}'{steamSuccess}{achMsg} sem gravar no disco."
                     : $"ðŸŽ‰ Sucesso! {result.SuccessCount} arquivo(s) restaurados no perfil do usuÃ¡rio '{targetUser}'{steamSuccess}{achMsg}!{steamRunningWarning}";
             }
             else
             {
                 RestoreProgressText = "RestauraÃ§Ã£o finalizada com pendÃªncias.";
-                RestoreResultSummary = $"âš ï¸ Finalizado com {result.ErrorCount} erro(s). Veja os detalhes abaixo.";
+                RestoreResultSummary = $"âš ï¸ Â Finalizado com {result.ErrorCount} erro(s). Veja os detalhes abaixo.";
             }
         }
         catch (Exception ex)
@@ -974,7 +1008,7 @@ public class MainViewModel : ViewModelBase
             else
             {
                 RestoreProgressText = "RestauraÃ§Ã£o em lote finalizada com erros.";
-                RestoreResultSummary = $"âš ï¸ ConcluÃ­do: {batchResult.SuccessCount} sucessos, {batchResult.FailureCount} falhas.";
+                RestoreResultSummary = $"âš ï¸ Â ConcluÃ­do: {batchResult.SuccessCount} sucessos, {batchResult.FailureCount} falhas.";
             }
         }
         catch (Exception ex)
@@ -1107,9 +1141,10 @@ public class MainViewModel : ViewModelBase
         get => _batchBackupOutputDir;
         set
         {
-            if (SetProperty(ref _batchBackupOutputDir, value))
+            var normalized = AppSettingsService.NormalizeDirectoryPath(value);
+            if (SetProperty(ref _batchBackupOutputDir, normalized))
             {
-                ApplyBackupDirectoryChange(value);
+                ApplyBackupDirectoryChange(normalized);
             }
         }
     }
@@ -1118,30 +1153,36 @@ public class MainViewModel : ViewModelBase
 
     private void ApplyBackupDirectoryChange(string newDir)
     {
-        if (string.IsNullOrWhiteSpace(newDir)) return;
+        var normalized = AppSettingsService.NormalizeDirectoryPath(newDir);
+        if (string.IsNullOrWhiteSpace(normalized)) return;
+
+        _batchBackupOutputDir = normalized;
 
         try
         {
-            if (!Directory.Exists(newDir))
+            if (!Directory.Exists(normalized))
             {
-                Directory.CreateDirectory(newDir);
+                Directory.CreateDirectory(normalized);
             }
         }
         catch { }
 
+        // Persiste imediatamente a alteraÃ§Ã£o de pasta de forma atÃ´mica
+        AppSettingsService.UpdateCustomBackupDirectory(normalized);
         SaveCurrentSettings();
 
         if (BackupGame != null)
         {
             var sanitized = string.Join("_", BackupGame.Name.Split(Path.GetInvalidFileNameChars())).Replace(" ", "_");
-            BackupZipPath = Path.Combine(newDir, $"{sanitized}_{BackupGame.AppId}_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
+            BackupZipPath = Path.Combine(normalized, $"{sanitized}_{BackupGame.AppId}_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
         }
 
         if (_gameWatcher != null)
         {
-            _gameWatcher.UpdateOutputDir(newDir);
+            _gameWatcher.UpdateOutputDir(normalized);
         }
 
+        OnPropertyChanged(nameof(BatchBackupOutputDir));
         OnPropertyChanged(nameof(LocalBackupsDirectoryDescription));
 
         // Recarrega a lista de backups locais da aba Restaurar imediatamente
@@ -1367,6 +1408,7 @@ public class MainViewModel : ViewModelBase
     public ICommand DeselectAllGamesCommand { get; }
     public ICommand SelectGamesWithSavesCommand { get; }
     public ICommand GoToBatchBackupTabCommand { get; }
+    public ICommand GoToGamesTabCommand { get; }
 
     public ICommand BrowseBackupOutputCommand { get; }
     public ICommand StartBackupCommand { get; }
@@ -2048,7 +2090,7 @@ public class MainViewModel : ViewModelBase
                 var targetUserMsg = !string.IsNullOrWhiteSpace(targetUser) ? targetUser : Environment.UserName;
 
                 var steamRunningWarning = System.Diagnostics.Process.GetProcessesByName("steam").Length > 0
-                    ? " âš ï¸ AVISO: A Steam estÃ¡ em execuÃ§Ã£o. Feche e reabra a Steam para que ela recarregue os saves sincronizados antes de abrir o jogo!"
+                    ? " âš ï¸ Â AVISO: A Steam estÃ¡ em execuÃ§Ã£o. Feche e reabra a Steam para que ela recarregue os saves sincronizados antes de abrir o jogo!"
                     : "";
 
                 var achMsg = res.AchievementsSynced > 0
@@ -2161,7 +2203,7 @@ public class MainViewModel : ViewModelBase
                     break;
 
                 case GameWatcherEventType.BackupStarted:
-                    logLine = $"[{time}] ðŸ’¾ BACKUP INICIADO: Compactando saves de {gameName}...";
+                    logLine = $"[{time}] Ã°Å¸â€™Â¾ BACKUP INICIADO: Compactando saves de {gameName}...";
                     break;
 
                 case GameWatcherEventType.BackupCompleted:
@@ -2171,7 +2213,7 @@ public class MainViewModel : ViewModelBase
                     break;
 
                 case GameWatcherEventType.CloudUploadStarted:
-                    logLine = $"[{time}] â˜ï¸ UPLOAD NUVEM: Enviando saves de {gameName} para o Google Drive...";
+                    logLine = $"[{time}] Ã¢ËœÂÃ¯Â¸Â UPLOAD NUVEM: Enviando saves de {gameName} para o Google Drive...";
                     break;
 
                 case GameWatcherEventType.CloudUploadCompleted:
@@ -2398,5 +2440,6 @@ public class MainViewModel : ViewModelBase
         }
     }
 }
+
 
 
