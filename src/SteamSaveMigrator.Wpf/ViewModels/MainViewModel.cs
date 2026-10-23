@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -25,7 +25,7 @@ public class MainViewModel : ViewModelBase
     private readonly SteamSaveMigratorEngine _engine = new();
 
     // Versão da Aplicação
-    public string AppVersion => typeof(MainViewModel).Assembly.GetName().Version is { } v ? $"{v.Major}.{v.Minor}.{v.Build}" : "1.4.1";
+    public string AppVersion => typeof(MainViewModel).Assembly.GetName().Version is { } v ? $"{v.Major}.{v.Minor}.{v.Build}" : "1.5.0";
     public string AppVersionDisplay => $"v{AppVersion}";
     public string WindowTitle => $"SteamSave Migrator {AppVersionDisplay} \u2022 Migrador, Conquistas e Conversor de Saves Steam";
     public string FooterStatusDisplay => $"SteamSaveMigrator {AppVersionDisplay} \u2022 Backup em Lote, Conquistas & Restauração Automática";
@@ -134,6 +134,8 @@ public class MainViewModel : ViewModelBase
     private ObservableCollection<string> _watcherLogs = new();
     private bool _watcherAutoBackup = true;
     private bool _watcherAutoUpload = true;
+    private bool _autoUploadToCloudOnBackup = true;
+    private bool _autoUploadToCloudNonSteamBackup = true;
     private int _watcherPollInterval = 2;
     private int _watcherPostExitDelay = 3;
 
@@ -143,6 +145,22 @@ public class MainViewModel : ViewModelBase
     private bool _autoStartWatcherOnLaunch = true;
     private bool _openSteamOnStartup = true;
     private string _settingsSavedFeedback = string.Empty;
+
+    // Backups Non-Steam (Correções: CODEX, PLAZA, CPY, HOODLUM, Rune, Voices38, etc.)
+    private ObservableCollection<NonSteamGameSave> _nonSteamGames = new();
+    private ICollectionView? _filteredNonSteamGames;
+    private NonSteamGameSave? _selectedNonSteamGame;
+    private string _nonSteamSearchText = string.Empty;
+    private string _selectedNonSteamFilter = "Todos";
+    private bool _isNonSteamScanning;
+    private string _nonSteamScanStatus = "Nenhuma varredura realizada ainda. Clique em 'Escanear Pastas de Correções' para buscar.";
+    private ObservableCollection<string> _customNonSteamFolders = new();
+    private ObservableCollection<NonSteamSearchLocation> _monitoredSearchLocations = new();
+    private bool _showMonitoredLocations;
+    private bool _isNonSteamBackingUp;
+    private double _nonSteamBackupProgress;
+    private string _nonSteamBackupProgressText = string.Empty;
+    private string _nonSteamBackupResultSummary = string.Empty;
 
     // Eventos para o serviço de bandeja
     public event Action<string, string, bool>? NotificationRequested;
@@ -166,6 +184,8 @@ public class MainViewModel : ViewModelBase
         _autoStartWatcherOnLaunch = userSettings.AutoStartWatcherOnLaunch;
         _watcherAutoBackup = userSettings.WatcherAutoBackup;
         _watcherAutoUpload = userSettings.WatcherAutoUpload;
+        _autoUploadToCloudOnBackup = userSettings.AutoUploadToCloudOnBackup;
+        _autoUploadToCloudNonSteamBackup = userSettings.AutoUploadToCloudNonSteamBackup;
         _watcherPollInterval = userSettings.WatcherPollInterval > 0 ? userSettings.WatcherPollInterval : 2;
         _watcherPostExitDelay = userSettings.WatcherPostExitDelay > 0 ? userSettings.WatcherPostExitDelay : 3;
         _minimizeToTrayOnClose = userSettings.MinimizeToTray;
@@ -195,11 +215,29 @@ public class MainViewModel : ViewModelBase
         RefreshLocalBackupsCommand = new RelayCommand(async () => await LoadLocalBackupsAsync(), () => !IsLocalBackupsLoading);
         ClearLocalSearchCommand = new RelayCommand(() => LocalSearchText = string.Empty);
         DeleteSelectedLocalBackupCommand = new RelayCommand(async () => await DeleteSelectedLocalBackupAsync(), () => SelectedLocalBackup != null && !IsLocalBackupsLoading);
+        UploadLocalBackupToCloudCommand = new RelayCommand(async item => await UploadLocalBackupToCloudAsync(item as LocalBackupInfo ?? SelectedLocalBackup), _ => IsGoogleDriveConnected && !IsLocalBackupsLoading);
         BrowseRestoreZipCommand = new RelayCommand(async () => await BrowseRestoreZipAsync());
         BrowseMultipleRestoreZipsCommand = new RelayCommand(async () => await BrowseMultipleRestoreZipsAsync());
         StartAutoRestoreCommand = new RelayCommand(async () => await StartAutoRestoreAsync(), () => (RestoreManifest != null || _restoreZipQueue.Count > 0 || SelectedLocalBackup != null) && !IsRestoring);
         StartCustomRestoreCommand = new RelayCommand(async () => await StartCustomRestoreAsync(), () => RestoreManifest != null && !IsRestoring);
         SyncAchievementsCommand = new RelayCommand(async () => await SyncAchievementsAsync(), () => HasAchievementsInBackup && SelectedTargetSteamAccount != null && !IsRestoring);
+
+        // Comandos Non-Steam (Correções: CODEX, PLAZA, CPY, HOODLUM, Rune, Voices38, etc.)
+        ScanNonSteamSavesCommand = new RelayCommand(async () => await ScanNonSteamSavesAsync(), () => !IsNonSteamScanning && !IsNonSteamBackingUp);
+        SelectAllNonSteamCommand = new RelayCommand(() => SetSelectionForAllNonSteam(true));
+        DeselectAllNonSteamCommand = new RelayCommand(() => SetSelectionForAllNonSteam(false));
+        AddCustomNonSteamFolderCommand = new RelayCommand(AddCustomNonSteamFolder);
+        RemoveCustomNonSteamFolderCommand = new RelayCommand(folder => RemoveCustomNonSteamFolder(folder as string));
+        BackupSelectedNonSteamCommand = new RelayCommand(async () => await StartBatchBackupNonSteamAsync(), () => NonSteamSelectedCount > 0 && !IsNonSteamBackingUp && !IsNonSteamScanning);
+        BackupSingleNonSteamCommand = new RelayCommand(async save => await BackupSingleNonSteamAsync(save as NonSteamGameSave ?? SelectedNonSteamGame), _ => SelectedNonSteamGame != null && !IsNonSteamBackingUp);
+        UploadNonSteamGameToCloudCommand = new RelayCommand(async save => await UploadNonSteamGameToCloudAsync(save as NonSteamGameSave ?? SelectedNonSteamGame), _ => IsGoogleDriveConnected && !IsNonSteamBackingUp);
+        OpenNonSteamFolderCommand = new RelayCommand(folder => OpenFolderInExplorer(folder as string));
+        ClearNonSteamSearchCommand = new RelayCommand(() => NonSteamSearchText = string.Empty);
+        ToggleMonitoredLocationsCommand = new RelayCommand(() => ShowMonitoredLocations = !ShowMonitoredLocations);
+
+        _filteredNonSteamGames = CollectionViewSource.GetDefaultView(_nonSteamGames);
+        _filteredNonSteamGames.Filter = FilterNonSteamGameItem;
+        RefreshMonitoredLocations();
 
         // Comandos Google Drive & Nuvem
         ConnectGoogleDriveCommand = new RelayCommand(async () => await ConnectGoogleDriveAsync(), () => !IsBusy);
@@ -214,6 +252,8 @@ public class MainViewModel : ViewModelBase
         ImportCredentialsJsonCommand = new RelayCommand(ImportCredentialsJson);
         SaveCustomCredentialsCommand = new RelayCommand(SaveCustomCredentials, () => !string.IsNullOrWhiteSpace(CustomClientId) && !string.IsNullOrWhiteSpace(CustomClientSecret));
         OpenGoogleConsoleCommand = new RelayCommand(OpenGoogleConsole);
+        OpenOAuthGuideCommand = new RelayCommand(OpenOAuthGuide);
+        ExportOAuthGuideCommand = new RelayCommand(ExportOAuthGuide);
 
         // Comandos Game Watcher (Monitor de Jogos)
         ToggleGameWatcherCommand = new RelayCommand(async () => await ToggleGameWatcherAsync());
@@ -298,6 +338,9 @@ public class MainViewModel : ViewModelBase
 
         // Verifica autenticação prévia no Google Drive em segundo plano
         _ = CheckGoogleDriveStatusAsync();
+
+        // Detecta saves de correções Non-Steam em segundo plano
+        _ = ScanNonSteamSavesAsync();
 
         // Inicia o aplicativo da Steam automaticamente caso configurado e não esteja em execução
         if (_openSteamOnStartup)
@@ -578,9 +621,43 @@ public class MainViewModel : ViewModelBase
 
             var fileInfo = new FileInfo(zipResult);
             BackupProgress = 100;
-            BackupProgressText = "Backup concluído com sucesso!";
-            BackupResultSummary = $"\u2705 Backup salvo em: {zipResult} ({ByteSizeFormatter.FormatBytes(fileInfo.Length)})";
-            StatusMessage = "Backup concluído com sucesso!";
+            BackupProgressText = "Backup local concluído!";
+            BackupResultSummary = $"\u2705 Backup local salvo em: {zipResult} ({ByteSizeFormatter.FormatBytes(fileInfo.Length)})";
+            StatusMessage = "Backup local concluído com sucesso!";
+
+            // Upload automático para a nuvem se configurado e conectado
+            if (AutoUploadToCloudOnBackup && IsGoogleDriveConnected)
+            {
+                BackupProgressText = "Enviando cópia para o Google Drive...";
+                StatusMessage = $"Enviando backup de {BackupGame.Name} para o Google Drive...";
+                try
+                {
+                    var cloudProg = new Progress<double>(pct =>
+                    {
+                        BackupProgressText = $"Enviando para o Google Drive: {pct:0}%";
+                    });
+
+                    await _engine.GoogleDrive.UploadBackupAsync(
+                        zipResult,
+                        BackupGame.Name,
+                        BackupGame.AppId,
+                        sourceSteamPersona: srcPersona,
+                        sourceSteamId3: srcSteamId,
+                        sourceSteamId64: SelectedSourceSteamAccount?.SteamId64,
+                        sourceUsername: SelectedSourceWindowsProfile?.Username,
+                        progress: cloudProg);
+
+                    BackupProgressText = "Backup local e em nuvem concluídos com sucesso!";
+                    BackupResultSummary += " \u2022 \u2601\uFE0F Salvo também no Google Drive!";
+                    StatusMessage = $"Backup de {BackupGame.Name} salvo localmente e no Google Drive!";
+                    _ = LoadCloudBackupsAsync();
+                }
+                catch (Exception cloudEx)
+                {
+                    BackupResultSummary += $" \u2022 \u26A0\uFE0F Falha no upload para nuvem: {cloudEx.Message}";
+                    StatusMessage = $"Backup local salvo, mas falhou ao enviar para nuvem: {cloudEx.Message}";
+                }
+            }
 
             _ = LoadLocalBackupsAsync();
         }
@@ -630,10 +707,51 @@ public class MainViewModel : ViewModelBase
             });
 
             BatchOverallProgress = 100;
-            BatchOverallProgressText = "Backup em lote finalizado!";
+            BatchOverallProgressText = "Backup local em lote finalizado!";
             BatchCurrentGameText = string.Empty;
             BatchBackupSummary = $"\U0001F389 Sucesso! {result.SuccessCount} jogo(s) salvos em '{BatchBackupOutputDir}'. Total compactado: {ByteSizeFormatter.FormatBytes(result.TotalSizeBytesArchived)} ({result.TotalFilesArchived} arquivos).";
             StatusMessage = $"Backup de {result.SuccessCount} jogos concluído com sucesso!";
+
+            // Upload em lote para o Google Drive se configurado e conectado
+            if (AutoUploadToCloudOnBackup && IsGoogleDriveConnected && result.SuccessCount > 0)
+            {
+                int cloudSuccess = 0;
+                var backupFiles = Directory.GetFiles(BatchBackupOutputDir, "*.zip")
+                    .OrderByDescending(File.GetLastWriteTimeUtc)
+                    .Take(result.SuccessCount * 2)
+                    .ToList();
+
+                BatchCurrentGameText = "Enviando cópias para o Google Drive...";
+                for (int i = 0; i < selectedGames.Count; i++)
+                {
+                    var g = selectedGames[i];
+                    var matchingZip = backupFiles.FirstOrDefault(f => Path.GetFileName(f).Contains(g.AppId.ToString()));
+                    if (matchingZip != null && File.Exists(matchingZip))
+                    {
+                        BatchOverallProgressText = $"Enviando para a nuvem ({i + 1}/{selectedGames.Count}): {g.Name}";
+                        try
+                        {
+                            await _engine.GoogleDrive.UploadBackupAsync(
+                                matchingZip,
+                                g.Name,
+                                g.AppId,
+                                sourceSteamPersona: srcPersona,
+                                sourceSteamId3: srcSteamId,
+                                sourceSteamId64: SelectedSourceSteamAccount?.SteamId64,
+                                sourceUsername: SelectedSourceWindowsProfile?.Username);
+                            cloudSuccess++;
+                        }
+                        catch { }
+                    }
+                }
+
+                if (cloudSuccess > 0)
+                {
+                    BatchBackupSummary += $" \u2022 \u2601\uFE0F {cloudSuccess} backup(s) sincronizados no Google Drive!";
+                    StatusMessage += $" ({cloudSuccess} salvos no Google Drive)";
+                    _ = LoadCloudBackupsAsync();
+                }
+            }
 
             _ = LoadLocalBackupsAsync();
         }
@@ -1189,7 +1307,7 @@ public class MainViewModel : ViewModelBase
         _ = LoadLocalBackupsAsync();
     }
 
-    private void SaveCurrentSettings()
+    public void SaveCurrentSettings()
     {
         try
         {
@@ -1199,6 +1317,8 @@ public class MainViewModel : ViewModelBase
                 AutoStartWatcherOnLaunch = _autoStartWatcherOnLaunch,
                 WatcherAutoBackup = _watcherAutoBackup,
                 WatcherAutoUpload = _watcherAutoUpload,
+                AutoUploadToCloudOnBackup = _autoUploadToCloudOnBackup,
+                AutoUploadToCloudNonSteamBackup = _autoUploadToCloudNonSteamBackup,
                 WatcherPollInterval = _watcherPollInterval,
                 WatcherPostExitDelay = _watcherPostExitDelay,
                 StartWithWindows = _startWithWindows,
@@ -1424,6 +1544,7 @@ public class MainViewModel : ViewModelBase
     public ICommand RefreshLocalBackupsCommand { get; }
     public ICommand ClearLocalSearchCommand { get; }
     public ICommand DeleteSelectedLocalBackupCommand { get; }
+    public ICommand UploadLocalBackupToCloudCommand { get; }
     public ICommand SyncAchievementsCommand { get; }
 
     // Comandos Nuvem & Watcher
@@ -1438,8 +1559,23 @@ public class MainViewModel : ViewModelBase
     public ICommand ImportCredentialsJsonCommand { get; }
     public ICommand SaveCustomCredentialsCommand { get; }
     public ICommand OpenGoogleConsoleCommand { get; }
+    public ICommand OpenOAuthGuideCommand { get; }
+    public ICommand ExportOAuthGuideCommand { get; }
     public ICommand ToggleGameWatcherCommand { get; }
     public ICommand ClearWatcherLogsCommand { get; }
+
+    // Comandos Non-Steam (Correções: CODEX, PLAZA, CPY, HOODLUM, Rune, Voices38, etc.)
+    public ICommand ScanNonSteamSavesCommand { get; }
+    public ICommand SelectAllNonSteamCommand { get; }
+    public ICommand DeselectAllNonSteamCommand { get; }
+    public ICommand AddCustomNonSteamFolderCommand { get; }
+    public ICommand RemoveCustomNonSteamFolderCommand { get; }
+    public ICommand BackupSelectedNonSteamCommand { get; }
+    public ICommand BackupSingleNonSteamCommand { get; }
+    public ICommand UploadNonSteamGameToCloudCommand { get; }
+    public ICommand OpenNonSteamFolderCommand { get; }
+    public ICommand ClearNonSteamSearchCommand { get; }
+    public ICommand ToggleMonitoredLocationsCommand { get; }
 
     // ==========================================
     // PROPRIEDADES PÚBLICAS: GOOGLE DRIVE & MONITOR
@@ -1771,8 +1907,35 @@ public class MainViewModel : ViewModelBase
         set => SetProperty(ref _settingsSavedFeedback, value);
     }
 
+    public bool AutoUploadToCloudOnBackup
+    {
+        get => _autoUploadToCloudOnBackup;
+        set
+        {
+            if (SetProperty(ref _autoUploadToCloudOnBackup, value))
+            {
+                SaveCurrentSettings();
+            }
+        }
+    }
+
+    public bool AutoUploadToCloudNonSteamBackup
+    {
+        get => _autoUploadToCloudNonSteamBackup;
+        set
+        {
+            if (SetProperty(ref _autoUploadToCloudNonSteamBackup, value))
+            {
+                SaveCurrentSettings();
+            }
+        }
+    }
+
+    public string OAuthGuideText => _engine.GoogleDrive.GetOAuthSetupGuideText();
+
     public void SaveSettingsExplicitly()
     {
+        SaveCurrentSettings();
         ApplyBackupDirectoryChange(BatchBackupOutputDir);
         SettingsSavedFeedback = "\u2705 Configurações e pasta salvas e ativas!";
         StatusMessage = $"Configurações salvas com sucesso! Pasta de backups ativa: {BatchBackupOutputDir}";
@@ -1781,6 +1944,39 @@ public class MainViewModel : ViewModelBase
         {
             SettingsSavedFeedback = string.Empty;
         }, TaskScheduler.FromCurrentSynchronizationContext());
+    }
+
+    public void OpenOAuthGuide()
+    {
+        try
+        {
+            var guideFile = _engine.GoogleDrive.ExportOAuthSetupGuideToFile();
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "notepad.exe",
+                Arguments = $"\"{guideFile}\"",
+                UseShellExecute = true
+            });
+            StatusMessage = $"Guia passo a passo exportado e aberto no Bloco de Notas: {guideFile}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Erro ao abrir guia OAuth: {ex.Message}";
+        }
+    }
+
+    public void ExportOAuthGuide()
+    {
+        try
+        {
+            var desktopDir = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            var guideFile = _engine.GoogleDrive.ExportOAuthSetupGuideToFile(desktopDir);
+            StatusMessage = $"Guia de configuração salvo com sucesso na Área de Trabalho: {Path.GetFileName(guideFile)}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Erro ao salvar guia OAuth: {ex.Message}";
+        }
     }
 
     // ==========================================
@@ -2402,6 +2598,55 @@ public class MainViewModel : ViewModelBase
         }
     }
 
+    public async Task UploadLocalBackupToCloudAsync(LocalBackupInfo? item)
+    {
+        var target = item ?? SelectedLocalBackup;
+        if (target == null || !File.Exists(target.FilePath))
+        {
+            StatusMessage = "Selecione um arquivo de backup local válido para enviar.";
+            return;
+        }
+
+        if (!IsGoogleDriveConnected)
+        {
+            StatusMessage = "Google Drive não conectado. Conecte sua conta na aba 'Nuvem' antes de enviar.";
+            return;
+        }
+
+        IsLocalBackupsLoading = true;
+        StatusMessage = $"Enviando '{target.GameName}' para o Google Drive...";
+        try
+        {
+            var progress = new Progress<double>(pct =>
+            {
+                StatusMessage = $"Enviando '{target.GameName}' para a nuvem: {pct:0}%";
+            });
+
+            await _engine.GoogleDrive.UploadBackupAsync(
+                target.FilePath,
+                target.GameName,
+                target.AppId,
+                sourceSteamPersona: target.SourceSteamPersona,
+                sourceSteamId3: target.SourceSteamId3,
+                sourceSteamId64: target.SourceSteamId64,
+                sourceUsername: target.SourceUsername,
+                achievementsCount: target.AchievementsCount,
+                achievementsUnlockedCount: target.AchievementsUnlockedCount,
+                progress: progress);
+
+            StatusMessage = $"✅ Backup de '{target.GameName}' enviado com sucesso para o Google Drive!";
+            _ = LoadCloudBackupsAsync();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"❌ Falha ao enviar para o Google Drive: {ex.Message}";
+        }
+        finally
+        {
+            IsLocalBackupsLoading = false;
+        }
+    }
+
     public async Task SyncAchievementsAsync()
     {
         if (RestoreManifest == null || RestoreManifest.Achievements == null || RestoreManifest.Achievements.Count == 0)
@@ -2438,6 +2683,653 @@ public class MainViewModel : ViewModelBase
             StatusMessage = $"Erro ao sincronizar conquistas: {ex.Message}";
             RestoreResultSummary = $"\u274C Erro ao sincronizar conquistas: {ex.Message}";
         }
+    }
+
+    // =========================================================================
+    // ABA NON-STEAM: PROPRIEDADES E MÉTODOS PARA JOGOS E CORREÇÕES (CODEX, RUNE, ETC.)
+    // =========================================================================
+
+    public ObservableCollection<NonSteamGameSave> NonSteamGames
+    {
+        get => _nonSteamGames;
+        set
+        {
+            if (SetProperty(ref _nonSteamGames, value))
+            {
+                _filteredNonSteamGames = CollectionViewSource.GetDefaultView(_nonSteamGames);
+                _filteredNonSteamGames.Filter = FilterNonSteamGameItem;
+                OnPropertyChanged(nameof(FilteredNonSteamGames));
+                OnPropertyChanged(nameof(NonSteamTotalCount));
+                OnPropertyChanged(nameof(NonSteamSelectedCount));
+                OnPropertyChanged(nameof(NonSteamTotalSizeFormatted));
+                OnPropertyChanged(nameof(FilteredNonSteamGamesCount));
+            }
+        }
+    }
+
+    public ICollectionView? FilteredNonSteamGames => _filteredNonSteamGames;
+
+    public NonSteamGameSave? SelectedNonSteamGame
+    {
+        get => _selectedNonSteamGame;
+        set
+        {
+            if (SetProperty(ref _selectedNonSteamGame, value))
+            {
+                (BackupSingleNonSteamCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public string NonSteamSearchText
+    {
+        get => _nonSteamSearchText;
+        set
+        {
+            if (SetProperty(ref _nonSteamSearchText, value))
+            {
+                _filteredNonSteamGames?.Refresh();
+                OnPropertyChanged(nameof(FilteredNonSteamGamesCount));
+            }
+        }
+    }
+
+    public string SelectedNonSteamFilter
+    {
+        get => _selectedNonSteamFilter;
+        set
+        {
+            if (SetProperty(ref _selectedNonSteamFilter, value))
+            {
+                _filteredNonSteamGames?.Refresh();
+                OnPropertyChanged(nameof(FilteredNonSteamGamesCount));
+            }
+        }
+    }
+
+    public ObservableCollection<string> NonSteamFilterOptions { get; } = new()
+    {
+        "Todos", "CODEX", "Rune", "PLAZA", "CPY", "HOODLUM", "Voices38", "Goldberg", "EMPRESS", "Outros"
+    };
+
+    public bool IsNonSteamScanning
+    {
+        get => _isNonSteamScanning;
+        set
+        {
+            if (SetProperty(ref _isNonSteamScanning, value))
+            {
+                (ScanNonSteamSavesCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (BackupSelectedNonSteamCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public string NonSteamScanStatus
+    {
+        get => _nonSteamScanStatus;
+        set => SetProperty(ref _nonSteamScanStatus, value);
+    }
+
+    public ObservableCollection<string> CustomNonSteamFolders
+    {
+        get => _customNonSteamFolders;
+        set => SetProperty(ref _customNonSteamFolders, value);
+    }
+
+    public ObservableCollection<NonSteamSearchLocation> MonitoredSearchLocations
+    {
+        get => _monitoredSearchLocations;
+        set => SetProperty(ref _monitoredSearchLocations, value);
+    }
+
+    public bool ShowMonitoredLocations
+    {
+        get => _showMonitoredLocations;
+        set => SetProperty(ref _showMonitoredLocations, value);
+    }
+
+    public int NonSteamTotalCount => _nonSteamGames.Count;
+
+    public int NonSteamSelectedCount => _nonSteamGames.Count(g => g.IsSelected);
+
+    public int FilteredNonSteamGamesCount => _filteredNonSteamGames?.Cast<object>().Count() ?? 0;
+
+    public string NonSteamTotalSizeFormatted
+    {
+        get
+        {
+            long total = _nonSteamGames.Where(g => g.IsSelected).Sum(g => g.TotalSizeBytes);
+            if (total <= 0) return "0 B";
+            string[] units = { "B", "KB", "MB", "GB", "TB" };
+            double size = total;
+            int unitIndex = 0;
+            while (size >= 1024 && unitIndex < units.Length - 1)
+            {
+                size /= 1024;
+                unitIndex++;
+            }
+            return $"{size:0.##} {units[unitIndex]}";
+        }
+    }
+
+    public bool IsNonSteamBackingUp
+    {
+        get => _isNonSteamBackingUp;
+        set
+        {
+            if (SetProperty(ref _isNonSteamBackingUp, value))
+            {
+                (BackupSelectedNonSteamCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (BackupSingleNonSteamCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (ScanNonSteamSavesCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public double NonSteamBackupProgress
+    {
+        get => _nonSteamBackupProgress;
+        set => SetProperty(ref _nonSteamBackupProgress, value);
+    }
+
+    public string NonSteamBackupProgressText
+    {
+        get => _nonSteamBackupProgressText;
+        set => SetProperty(ref _nonSteamBackupProgressText, value);
+    }
+
+    public string NonSteamBackupResultSummary
+    {
+        get => _nonSteamBackupResultSummary;
+        set => SetProperty(ref _nonSteamBackupResultSummary, value);
+    }
+
+    private bool FilterNonSteamGameItem(object obj)
+    {
+        if (obj is not NonSteamGameSave item) return false;
+
+        // Filtro por categoria / correção
+        if (!string.IsNullOrWhiteSpace(SelectedNonSteamFilter) && !SelectedNonSteamFilter.Equals("Todos", StringComparison.OrdinalIgnoreCase))
+        {
+            if (SelectedNonSteamFilter.Equals("Outros", StringComparison.OrdinalIgnoreCase))
+            {
+                var mainCracks = new[] { "CODEX", "Rune", "PLAZA", "CPY", "HOODLUM", "Voices38", "Goldberg", "EMPRESS" };
+                if (mainCracks.Any(c => item.CrackSource.Equals(c, StringComparison.OrdinalIgnoreCase)))
+                {
+                    return false;
+                }
+            }
+            else if (!item.CrackSource.Equals(SelectedNonSteamFilter, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        // Filtro por texto de pesquisa
+        if (string.IsNullOrWhiteSpace(NonSteamSearchText)) return true;
+
+        var term = NonSteamSearchText.Trim();
+        if (item.GameName.Contains(term, StringComparison.OrdinalIgnoreCase)) return true;
+        if (item.AppId.ToString().Contains(term, StringComparison.OrdinalIgnoreCase)) return true;
+        if (item.CrackSource.Contains(term, StringComparison.OrdinalIgnoreCase)) return true;
+        if (item.SavePath.Contains(term, StringComparison.OrdinalIgnoreCase)) return true;
+
+        return false;
+    }
+
+    public async Task ScanNonSteamSavesAsync()
+    {
+        if (IsNonSteamScanning) return;
+
+        IsNonSteamScanning = true;
+        NonSteamScanStatus = "Escaneando diretórios de correções e emuladores Steam...";
+
+        var progress = new Progress<string>(msg =>
+        {
+            NonSteamScanStatus = msg;
+        });
+
+        try
+        {
+            var detected = await _engine.DetectNonSteamSavesAsync(CustomNonSteamFolders, progress);
+
+            // Vincula o evento PropertyChanged em cada item para atualizar seleção em tempo real
+            foreach (var item in detected)
+            {
+                item.PropertyChanged += (s, e) =>
+                {
+                    if (e.PropertyName == nameof(NonSteamGameSave.IsSelected))
+                    {
+                        NotifyNonSteamSelectionChanged();
+                    }
+                };
+            }
+
+            NonSteamGames = new ObservableCollection<NonSteamGameSave>(detected);
+            if (SelectedNonSteamGame == null && NonSteamGames.Count > 0)
+            {
+                SelectedNonSteamGame = NonSteamGames[0];
+            }
+
+            RefreshMonitoredLocations();
+            NotifyNonSteamSelectionChanged();
+
+            NonSteamScanStatus = detected.Count > 0
+                ? $"Varredura concluída: {detected.Count} jogo(s) com saves identificados nas pastas de correções."
+                : "Varredura concluída: Nenhum save de correções Steam foi encontrado nas pastas padrão.";
+        }
+        catch (Exception ex)
+        {
+            NonSteamScanStatus = $"Erro durante a varredura: {ex.Message}";
+        }
+        finally
+        {
+            IsNonSteamScanning = false;
+        }
+    }
+
+    public void SetSelectionForAllNonSteam(bool select)
+    {
+        foreach (var item in NonSteamGames)
+        {
+            item.IsSelected = select;
+        }
+        _filteredNonSteamGames?.Refresh();
+        NotifyNonSteamSelectionChanged();
+    }
+
+    public void NotifyNonSteamSelectionChanged()
+    {
+        OnPropertyChanged(nameof(NonSteamSelectedCount));
+        OnPropertyChanged(nameof(NonSteamTotalSizeFormatted));
+        (BackupSelectedNonSteamCommand as RelayCommand)?.RaiseCanExecuteChanged();
+    }
+
+    public void AddCustomNonSteamFolder()
+    {
+        try
+        {
+            var dialog = new Microsoft.Win32.OpenFolderDialog
+            {
+                Title = "Selecione uma pasta com saves de jogos para verificar",
+                Multiselect = false
+            };
+
+            if (dialog.ShowDialog() == true && !string.IsNullOrWhiteSpace(dialog.FolderName))
+            {
+                var folder = Path.GetFullPath(dialog.FolderName);
+                if (!CustomNonSteamFolders.Contains(folder, StringComparer.OrdinalIgnoreCase))
+                {
+                    CustomNonSteamFolders.Add(folder);
+                    _ = ScanNonSteamSavesAsync();
+                }
+            }
+        }
+        catch
+        {
+            var ofd = new OpenFileDialog
+            {
+                Title = "Selecione uma pasta para verificar saves",
+                ValidateNames = false,
+                CheckFileExists = false,
+                CheckPathExists = true,
+                FileName = "Selecionar esta pasta"
+            };
+
+            if (ofd.ShowDialog() == true)
+            {
+                var dir = Path.GetDirectoryName(ofd.FileName);
+                if (!string.IsNullOrWhiteSpace(dir) && !CustomNonSteamFolders.Contains(dir, StringComparer.OrdinalIgnoreCase))
+                {
+                    CustomNonSteamFolders.Add(dir);
+                    _ = ScanNonSteamSavesAsync();
+                }
+            }
+        }
+    }
+
+    public void RemoveCustomNonSteamFolder(string? folder)
+    {
+        if (string.IsNullOrWhiteSpace(folder)) return;
+        CustomNonSteamFolders.Remove(folder);
+        _ = ScanNonSteamSavesAsync();
+    }
+
+    public async Task StartBatchBackupNonSteamAsync()
+    {
+        var selected = NonSteamGames.Where(g => g.IsSelected).ToList();
+        if (selected.Count == 0 || IsNonSteamBackingUp) return;
+
+        IsNonSteamBackingUp = true;
+        NonSteamBackupProgress = 0;
+        NonSteamBackupProgressText = $"Iniciando backup em lote de {selected.Count} jogo(s) Non-Steam...";
+        NonSteamBackupResultSummary = string.Empty;
+
+        var currentOutputDir = AppSettingsService.NormalizeDirectoryPath(BatchBackupOutputDir);
+        if (string.IsNullOrWhiteSpace(currentOutputDir))
+        {
+            currentOutputDir = AppSettingsService.GetEffectiveBackupDirectory();
+            _batchBackupOutputDir = currentOutputDir;
+        }
+
+        try
+        {
+            if (!Directory.Exists(currentOutputDir))
+            {
+                Directory.CreateDirectory(currentOutputDir);
+            }
+        }
+        catch { }
+
+        var progress = new Progress<BatchBackupProgressReport>(report =>
+        {
+            if (report.TotalGames > 0)
+            {
+                NonSteamBackupProgress = (double)report.CurrentGameIndex / report.TotalGames * 100;
+                NonSteamBackupProgressText = $"[{report.CurrentGameIndex}/{report.TotalGames}] Compactando {report.CurrentGameName}...";
+            }
+        });
+
+        try
+        {
+            var result = await _engine.BackupMultipleNonSteamGamesAsync(
+                selected,
+                currentOutputDir,
+                null,
+                progress);
+
+            NonSteamBackupProgress = 100;
+            NonSteamBackupProgressText = "Backup em lote concluído com sucesso!";
+            NonSteamBackupResultSummary = $"✅ {result.SuccessCount} jogo(s) salvos com sucesso em '{currentOutputDir}'. Total: {result.TotalSizeBytesArchived / (1024.0 * 1024.0):F2} MB compactados.";
+            StatusMessage = $"Backup em lote Non-Steam concluído: {result.SuccessCount} jogos salvos.";
+
+            // Upload automático para a nuvem se configurado e conectado
+            if (AutoUploadToCloudNonSteamBackup && IsGoogleDriveConnected && result.SuccessCount > 0)
+            {
+                int cloudSuccess = 0;
+                NonSteamBackupProgressText = "Enviando cópias Non-Steam para o Google Drive...";
+                var filesToUpload = result.GeneratedZipFiles != null && result.GeneratedZipFiles.Count > 0
+                    ? result.GeneratedZipFiles
+                    : Directory.GetFiles(currentOutputDir, "*.zip")
+                        .OrderByDescending(File.GetLastWriteTimeUtc)
+                        .Take(result.SuccessCount)
+                        .ToList();
+
+                for (int i = 0; i < filesToUpload.Count; i++)
+                {
+                    var zipPath = filesToUpload[i];
+                    if (File.Exists(zipPath))
+                    {
+                        var matchingGame = selected.FirstOrDefault(s => zipPath.Contains(s.AppId.ToString())) ?? selected.ElementAtOrDefault(i);
+                        var gName = matchingGame?.GameName ?? Path.GetFileNameWithoutExtension(zipPath);
+                        var aId = matchingGame?.AppId ?? 0;
+                        var crack = matchingGame?.CrackSource ?? "NonSteam";
+
+                        NonSteamBackupProgressText = $"Enviando para o Google Drive ({i + 1}/{filesToUpload.Count}): {gName} ({crack})";
+                        try
+                        {
+                            await _engine.GoogleDrive.UploadBackupAsync(
+                                zipPath,
+                                $"{gName} ({crack})",
+                                aId,
+                                sourceSteamPersona: crack,
+                                sourceUsername: Environment.UserName);
+                            cloudSuccess++;
+                        }
+                        catch { }
+                    }
+                }
+
+                if (cloudSuccess > 0)
+                {
+                    NonSteamBackupResultSummary += $" \u2022 ☁️ {cloudSuccess} backup(s) sincronizados no Google Drive!";
+                    StatusMessage += $" ({cloudSuccess} salvos no Google Drive)";
+                    _ = LoadCloudBackupsAsync();
+                }
+            }
+
+            // Atualiza a lista de backups locais da aba Restaurar Saves
+            await LoadLocalBackupsAsync();
+        }
+        catch (Exception ex)
+        {
+            NonSteamBackupProgressText = "Erro durante o backup.";
+            NonSteamBackupResultSummary = $"❌ Falha ao realizar backup em lote: {ex.Message}";
+            StatusMessage = $"Erro no backup Non-Steam: {ex.Message}";
+        }
+        finally
+        {
+            IsNonSteamBackingUp = false;
+        }
+    }
+
+    public async Task BackupSingleNonSteamAsync(NonSteamGameSave? save)
+    {
+        if (save == null || IsNonSteamBackingUp) return;
+
+        var currentDir = AppSettingsService.NormalizeDirectoryPath(BatchBackupOutputDir);
+        if (string.IsNullOrWhiteSpace(currentDir))
+        {
+            currentDir = AppSettingsService.GetEffectiveBackupDirectory();
+            _batchBackupOutputDir = currentDir;
+        }
+
+        try
+        {
+            if (!Directory.Exists(currentDir)) Directory.CreateDirectory(currentDir);
+        }
+        catch { }
+
+        var sanitized = string.Join("_", save.GameName.Split(Path.GetInvalidFileNameChars())).Replace(" ", "_");
+        var defaultZipName = $"{sanitized}_{save.CrackSource}_{DateTime.Now:yyyyMMdd_HHmmss}.zip";
+
+        var sfd = new SaveFileDialog
+        {
+            Title = $"Salvar Backup de {save.GameName} ({save.CrackSource})",
+            Filter = "Arquivo de Backup SteamSave (*.zip)|*.zip",
+            InitialDirectory = currentDir,
+            FileName = defaultZipName
+        };
+
+        if (sfd.ShowDialog() != true) return;
+
+        IsNonSteamBackingUp = true;
+        NonSteamBackupProgress = 0;
+        NonSteamBackupProgressText = $"Iniciando backup de {save.GameName}...";
+
+        var progress = new Progress<BackupProgressReport>(report =>
+        {
+            if (report.TotalFiles > 0)
+            {
+                NonSteamBackupProgress = (double)report.CurrentFileIndex / report.TotalFiles * 100;
+                NonSteamBackupProgressText = $"Salvando ({report.CurrentFileIndex}/{report.TotalFiles}): {report.CurrentFileName}";
+            }
+        });
+
+        try
+        {
+            await _engine.BackupNonSteamGameAsync(save, sfd.FileName, null, progress);
+            NonSteamBackupProgress = 100;
+            NonSteamBackupProgressText = "Backup individual concluído com sucesso!";
+            NonSteamBackupResultSummary = $"✅ Backup de '{save.GameName}' salvo com sucesso em '{sfd.FileName}'.";
+            StatusMessage = $"Backup de {save.GameName} salvo.";
+
+            // Upload automático para a nuvem se configurado e conectado
+            if (AutoUploadToCloudNonSteamBackup && IsGoogleDriveConnected)
+            {
+                NonSteamBackupProgressText = "Enviando cópia Non-Steam para o Google Drive...";
+                StatusMessage = $"Enviando backup de {save.GameName} para o Google Drive...";
+                try
+                {
+                    var cloudProg = new Progress<double>(pct =>
+                    {
+                        NonSteamBackupProgressText = $"Enviando para o Google Drive: {pct:0}%";
+                    });
+
+                    await _engine.GoogleDrive.UploadBackupAsync(
+                        sfd.FileName,
+                        $"{save.GameName} ({save.CrackSource})",
+                        save.AppId,
+                        sourceSteamPersona: save.CrackSource,
+                        sourceUsername: Environment.UserName,
+                        progress: cloudProg);
+
+                    NonSteamBackupProgressText = "Backup local e em nuvem concluídos com sucesso!";
+                    NonSteamBackupResultSummary += " \u2022 ☁️ Salvo também no Google Drive!";
+                    StatusMessage = $"Backup de {save.GameName} salvo localmente e no Google Drive!";
+                    _ = LoadCloudBackupsAsync();
+                }
+                catch (Exception cloudEx)
+                {
+                    NonSteamBackupResultSummary += $" \u2022 ⚠️ Falha no upload para nuvem: {cloudEx.Message}";
+                    StatusMessage = $"Backup local salvo, mas falhou ao enviar para nuvem: {cloudEx.Message}";
+                }
+            }
+
+            await LoadLocalBackupsAsync();
+        }
+        catch (Exception ex)
+        {
+            NonSteamBackupProgressText = "Erro durante o backup.";
+            NonSteamBackupResultSummary = $"❌ Erro ao salvar backup: {ex.Message}";
+            StatusMessage = $"Erro no backup: {ex.Message}";
+        }
+        finally
+        {
+            IsNonSteamBackingUp = false;
+        }
+    }
+
+    public async Task UploadNonSteamGameToCloudAsync(NonSteamGameSave? save)
+    {
+        var target = save ?? SelectedNonSteamGame;
+        if (target == null)
+        {
+            StatusMessage = "Selecione um jogo Non-Steam para enviar para o Google Drive.";
+            return;
+        }
+
+        if (!IsGoogleDriveConnected)
+        {
+            StatusMessage = "Google Drive não conectado. Conecte sua conta na aba 'Nuvem' antes de enviar.";
+            return;
+        }
+
+        if (IsNonSteamBackingUp) return;
+
+        IsNonSteamBackingUp = true;
+        NonSteamBackupProgress = 0;
+        NonSteamBackupProgressText = $"Criando pacote para {target.GameName}...";
+
+        var currentDir = AppSettingsService.NormalizeDirectoryPath(BatchBackupOutputDir);
+        if (string.IsNullOrWhiteSpace(currentDir))
+        {
+            currentDir = AppSettingsService.GetEffectiveBackupDirectory();
+            _batchBackupOutputDir = currentDir;
+        }
+
+        try
+        {
+            if (!Directory.Exists(currentDir)) Directory.CreateDirectory(currentDir);
+        }
+        catch { }
+
+        var sanitized = string.Join("_", target.GameName.Split(Path.GetInvalidFileNameChars())).Replace(" ", "_");
+        var outputZip = Path.Combine(currentDir, $"{sanitized}_{target.CrackSource}_{DateTime.Now:yyyyMMdd_HHmmss}.zip");
+
+        var progress = new Progress<BackupProgressReport>(report =>
+        {
+            if (report.TotalFiles > 0)
+            {
+                NonSteamBackupProgress = (double)report.CurrentFileIndex / report.TotalFiles * 50.0;
+                NonSteamBackupProgressText = $"Compactando saves ({report.CurrentFileIndex}/{report.TotalFiles}): {report.CurrentFileName}";
+            }
+        });
+
+        try
+        {
+            await _engine.BackupNonSteamGameAsync(target, outputZip, null, progress);
+            NonSteamBackupProgress = 50;
+            NonSteamBackupProgressText = "Enviando arquivo para o Google Drive...";
+            StatusMessage = $"Enviando {target.GameName} ({target.CrackSource}) para o Google Drive...";
+
+            var cloudProg = new Progress<double>(pct =>
+            {
+                NonSteamBackupProgress = 50.0 + (pct * 0.5);
+                NonSteamBackupProgressText = $"Enviando para o Google Drive: {pct:0}%";
+            });
+
+            await _engine.GoogleDrive.UploadBackupAsync(
+                outputZip,
+                $"{target.GameName} ({target.CrackSource})",
+                target.AppId,
+                sourceSteamPersona: target.CrackSource,
+                sourceUsername: Environment.UserName,
+                progress: cloudProg);
+
+            NonSteamBackupProgress = 100;
+            NonSteamBackupProgressText = "Backup e upload para nuvem concluídos com sucesso!";
+            NonSteamBackupResultSummary = $"✅ '{target.GameName}' salvo com sucesso em '{outputZip}' e sincronizado no Google Drive!";
+            StatusMessage = $"Backup de {target.GameName} salvo e enviado para o Google Drive!";
+
+            await LoadLocalBackupsAsync();
+            _ = LoadCloudBackupsAsync();
+        }
+        catch (Exception ex)
+        {
+            NonSteamBackupProgressText = "Erro durante backup/envio.";
+            NonSteamBackupResultSummary = $"❌ Erro ao enviar para a nuvem: {ex.Message}";
+            StatusMessage = $"Erro no envio para nuvem: {ex.Message}";
+        }
+        finally
+        {
+            IsNonSteamBackingUp = false;
+        }
+    }
+
+    public void OpenFolderInExplorer(string? folderPath)
+    {
+        if (string.IsNullOrWhiteSpace(folderPath)) return;
+        try
+        {
+            if (Directory.Exists(folderPath))
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = $"\"{folderPath}\"",
+                    UseShellExecute = true
+                });
+            }
+            else if (File.Exists(folderPath))
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = $"/select,\"{folderPath}\"",
+                    UseShellExecute = true
+                });
+            }
+            else
+            {
+                StatusMessage = "O caminho especificado não existe no sistema.";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Erro ao abrir pasta no Explorer: {ex.Message}";
+        }
+    }
+
+    public void RefreshMonitoredLocations()
+    {
+        try
+        {
+            var locs = NonSteamSaveDetector.GetKnownSearchLocations();
+            MonitoredSearchLocations = new ObservableCollection<NonSteamSearchLocation>(locs);
+        }
+        catch { }
     }
 }
 

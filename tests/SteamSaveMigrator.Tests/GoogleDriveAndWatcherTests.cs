@@ -110,6 +110,15 @@ public class MockGoogleDriveService : IGoogleDriveService
     }
 
     public bool ConfigureCredentialsFromJson(string jsonFilePath) => true;
+
+    public string GetOAuthSetupGuideText() => "Guia de Teste OAuth";
+
+    public string ExportOAuthSetupGuideToFile(string? customTargetDirectory = null)
+    {
+        var target = Path.Combine(customTargetDirectory ?? Path.GetTempPath(), "test_guide.txt");
+        File.WriteAllText(target, GetOAuthSetupGuideText());
+        return target;
+    }
 }
 
 [System.Runtime.Versioning.SupportedOSPlatform("windows")]
@@ -373,6 +382,52 @@ public class GoogleDriveAndWatcherTests : IDisposable
 
         Assert.True(realService.HasConfiguredCredentials);
         Assert.Equal("manual_client_id.apps.googleusercontent.com", realService.CurrentClientId);
+    }
+
+    [Fact]
+    public void GoogleDriveService_DefaultCredentials_FollowsSecurityPolicy()
+    {
+        var authDirDefault = Path.Combine(_testRoot, "IsolatedAuthDefault");
+        Directory.CreateDirectory(authDirDefault);
+        var realService = new GoogleDriveService(authDirDefault);
+
+        // Sem segredos fixos no repositório aberto do GitHub
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GOOGLE_CLIENT_ID")))
+        {
+            Assert.False(realService.HasConfiguredCredentials);
+            Assert.Equal(string.Empty, realService.CurrentClientId);
+        }
+        else
+        {
+            Assert.True(realService.HasConfiguredCredentials);
+        }
+    }
+
+    [Fact]
+    public void GoogleDriveService_GetOAuthSetupGuideText_ReturnsComprehensiveInstructions()
+    {
+        var realService = new GoogleDriveService();
+        var guide = realService.GetOAuthSetupGuideText();
+
+        Assert.Contains("GUIA PASSO A PASSO", guide, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Google Cloud Console", guide, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Google Drive API", guide, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Usuários de teste", guide, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("credentials.json", guide, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void GoogleDriveService_ExportOAuthSetupGuideToFile_CreatesTextFile()
+    {
+        var realService = new GoogleDriveService();
+        var tempDir = Path.Combine(_testRoot, "GuideExport");
+        Directory.CreateDirectory(tempDir);
+
+        var file = realService.ExportOAuthSetupGuideToFile(tempDir);
+
+        Assert.True(File.Exists(file));
+        var content = File.ReadAllText(file);
+        Assert.Contains("GUIA PASSO A PASSO", content);
     }
 
     [Fact]

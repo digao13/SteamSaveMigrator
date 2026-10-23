@@ -77,6 +77,11 @@ Com o **SteamSaveMigrator**, você faz backup de múltiplos jogos com apenas **1
 - **☁️ Integração com Google Drive**:
   - Sincronize seus backups com sua conta pessoal do Google Drive na nuvem.
   - Baixe e restaure backups remotos com suporte a controle de versão e cotas.
+- **🏴‍☠️ Identificação & Backup de Jogos Non-Steam (Correções)**:
+  - Aba dedicada para varredura e backup de saves de jogos non-Steam e correções conhecidas (**CODEX, Rune, PLAZA, CPY, HOODLUM, Voices38, Goldberg, EMPRESS, SKIDROW, Fairlight FLT**).
+  - Reconhecimento automático inteligente de AppIDs, nomes reais dos jogos (mesmo offline com catálogo integrado e fallback online na Steam API) e arquivos de save.
+  - Suporte a adicionar pastas personalizadas de qualquer local do disco ou unidades externas.
+  - Geração de backups individuais ou em lote perfeitamente compatíveis com o restaurador automático e nuvem do SteamSaveMigrator.
 - **🛡️ Game Watcher (Monitor em Segundo Plano)**:
   - Fica minimizado na bandeja do sistema (System Tray).
   - Detecta automaticamente quando você fecha qualquer jogo da Steam e cria/envia o backup de save atualizado.

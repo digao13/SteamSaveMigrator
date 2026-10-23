@@ -19,6 +19,17 @@ public class UserSettings
     public bool AutoStartWatcherOnLaunch { get; set; } = true;
     public bool WatcherAutoBackup { get; set; } = true;
     public bool WatcherAutoUpload { get; set; } = true;
+
+    /// <summary>
+    /// Envia cópia para o Google Drive automaticamente após concluir backups manuais e em lote.
+    /// </summary>
+    public bool AutoUploadToCloudOnBackup { get; set; } = true;
+
+    /// <summary>
+    /// Envia cópia para o Google Drive automaticamente após concluir backups de jogos non-Steam.
+    /// </summary>
+    public bool AutoUploadToCloudNonSteamBackup { get; set; } = true;
+
     public int WatcherPollInterval { get; set; } = 3;
     public int WatcherPostExitDelay { get; set; } = 5;
     public bool StartWithWindows { get; set; } = false;

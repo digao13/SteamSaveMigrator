@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:SteamSaveMigrator.Wpf.ViewModels"
         mc:Ignorable="d"
-        Title="{Binding WindowTitle, FallbackValue='SteamSave Migrator v1.3.1 • Migrador, Conquistas e Conversor de Saves Steam'}"
+        Title="{Binding WindowTitle, FallbackValue='SteamSave Migrator v1.5.0 • Migrador, Conquistas e Conversor de Saves Steam'}"
         Height="820" Width="1220"
         MinHeight="700" MinWidth="980"
         WindowStartupLocation="CenterScreen"
@@ -44,7 +44,7 @@
                             <TextBlock Text="SteamSave" FontSize="22" FontWeight="Bold" Foreground="#FFFFFF" />
                             <TextBlock Text="Migrator" FontSize="22" FontWeight="Light" Foreground="{StaticResource BrushAccent}" Margin="2,0,0,0" />
                             <Border Background="{StaticResource BrushAccent}" CornerRadius="10" Padding="8,2" Margin="10,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding AppVersionDisplay, FallbackValue='v1.3.1'}" FontSize="11" FontWeight="Bold" Foreground="#0A0F18" />
+                                <TextBlock Text="{Binding AppVersionDisplay, FallbackValue='v1.5.0'}" FontSize="11" FontWeight="Bold" Foreground="#0A0F18" />
                             </Border>
                         </StackPanel>
                         <TextBlock Text="Backup em Lote, Conquistas e Restauração Automática Transparente entre Perfis" FontSize="12.5" Foreground="{StaticResource BrushTextSecondary}" Margin="0,3,0,0" />
@@ -369,6 +369,11 @@
                                         <TextBlock Text="{Binding BackupResultSummary}" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource BrushSuccessVibrant}" TextWrapping="Wrap" />
                                     </Border>
 
+                                    <!-- Opção de envio para o Google Drive -->
+                                    <CheckBox Content="☁️ Enviar cópia para o Google Drive automaticamente ao concluir"
+                                              IsChecked="{Binding AutoUploadToCloudOnBackup}"
+                                              Foreground="#4FC3F7" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,12" />
+
                                     <!-- Botão Executar Backup Individual -->
                                     <Button Content="💾 Fazer Backup Deste Jogo Agora"
                                             Style="{StaticResource ButtonPrimaryStyle}"
@@ -474,6 +479,11 @@
                                     <TextBlock Text="{Binding BatchBackupSummary}" FontSize="13.5" FontWeight="Bold" Foreground="{StaticResource BrushSuccessVibrant}" TextWrapping="Wrap" />
                                 </Border>
 
+                                <!-- Opção de envio para o Google Drive -->
+                                <CheckBox Content="☁️ Enviar cópias de todos os jogos para o Google Drive automaticamente ao concluir"
+                                          IsChecked="{Binding AutoUploadToCloudOnBackup}"
+                                          Foreground="#4FC3F7" FontWeight="SemiBold" FontSize="13.5" Margin="0,0,0,14" />
+
                                 <!-- Botão de Execução do Lote -->
                                 <Button Content="🚀 Iniciar Backup de Todos os Jogos Marcados Agora"
                                         Style="{StaticResource ButtonPrimaryStyle}"
@@ -484,6 +494,408 @@
                         </Border>
                     </StackPanel>
                 </ScrollViewer>
+            </TabItem>
+
+            <!-- ===================================================================== -->
+            <!-- ABA: BACKUPS NON-STEAM (CORREÇÕES: CODEX, RUNE, PLAZA, CPY, ETC.)     -->
+            <!-- ===================================================================== -->
+            <TabItem Header="📦  Backups Non-Steam">
+                <Grid Margin="0,12,0,0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" /> <!-- Cards de Métricas e Resumo -->
+                        <RowDefinition Height="Auto" /> <!-- Barra de Filtros e Comandos -->
+                        <RowDefinition Height="Auto" /> <!-- Feedback de Varredura e Backup -->
+                        <RowDefinition Height="*" />    <!-- Lista de Jogos e Painel de Detalhes -->
+                    </Grid.RowDefinitions>
+
+                    <!-- CARDS DE MÉTRICAS E RESUMO -->
+                    <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="1.2*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Card 1: Jogos Detectados -->
+                        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="16,14" Margin="0,0,10,0">
+                            <StackPanel>
+                                <TextBlock Text="JOGOS IDENTIFICADOS" FontSize="11" FontWeight="Bold" Foreground="{StaticResource BrushTextMuted}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="🎮" FontSize="20" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding NonSteamTotalCount}" FontSize="24" FontWeight="Bold" Foreground="#FFFFFF" VerticalAlignment="Center" />
+                                    <TextBlock Text=" jogo(s)" FontSize="13" Foreground="{StaticResource BrushTextSecondary}" VerticalAlignment="Bottom" Margin="4,0,0,3" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Card 2: Jogos Selecionados -->
+                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="16,14" Margin="0,0,10,0">
+                            <StackPanel>
+                                <TextBlock Text="SELECIONADOS PARA BACKUP" FontSize="11" FontWeight="Bold" Foreground="{StaticResource BrushTextMuted}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="☑️" FontSize="20" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding NonSteamSelectedCount}" FontSize="24" FontWeight="Bold" Foreground="{StaticResource BrushAccent}" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding NonSteamTotalCount, StringFormat='(de {0})'}" FontSize="13" Foreground="{StaticResource BrushTextSecondary}" VerticalAlignment="Bottom" Margin="6,0,0,3" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Card 3: Tamanho Total -->
+                        <Border Grid.Column="2" Style="{StaticResource CardBorderStyle}" Padding="16,14" Margin="0,0,10,0">
+                            <StackPanel>
+                                <TextBlock Text="TAMANHO DOS SAVES" FontSize="11" FontWeight="Bold" Foreground="{StaticResource BrushTextMuted}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="💾" FontSize="20" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding NonSteamTotalSizeFormatted}" FontSize="24" FontWeight="Bold" Foreground="{StaticResource BrushSteamGreenText}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Card 4: Pastas Monitoradas & Ação -->
+                        <Border Grid.Column="3" Style="{StaticResource CardBorderStyle}" Padding="16,14">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <TextBlock Text="PASTAS DE CORREÇÕES" FontSize="11" FontWeight="Bold" Foreground="{StaticResource BrushTextMuted}" />
+                                    <TextBlock Text="CODEX, Rune, PLAZA, CPY, HOODLUM, Voices38..." FontSize="12.5" Foreground="#FFFFFF" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="📁 Ver Pastas" Style="{StaticResource ButtonSecondaryStyle}"
+                                        Command="{Binding ToggleMonitoredLocationsCommand}"
+                                        Padding="12,6" FontSize="12" VerticalAlignment="Center"
+                                        ToolTip="Exibe a lista de diretórios padrão e pastas personalizadas monitoradas" />
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <!-- BARRA DE FILTROS E AÇÕES -->
+                    <Border Grid.Row="1" Style="{StaticResource CardBorderStyle}" Padding="14" Margin="0,0,0,12">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="280" />
+                                <ColumnDefinition Width="150" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Campo de Busca -->
+                            <Grid Grid.Column="0" Margin="0,0,10,0">
+                                <TextBox Text="{Binding NonSteamSearchText, UpdateSourceTrigger=PropertyChanged}" Padding="12,8" FontSize="13.5" />
+                                <TextBlock Text="🔍 Filtrar por jogo, AppID ou correção..." FontSize="13"
+                                           Foreground="{StaticResource BrushTextMuted}" VerticalAlignment="Center" Margin="14,0,0,0" IsHitTestVisible="False">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding NonSteamSearchText}" Value="">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Grid>
+
+                            <!-- Seletor de Correção -->
+                            <ComboBox Grid.Column="1" ItemsSource="{Binding NonSteamFilterOptions}"
+                                      SelectedItem="{Binding SelectedNonSteamFilter}"
+                                      Padding="10,7" FontSize="13" Margin="0,0,12,0"
+                                      ToolTip="Filtrar por grupo ou tipo de correção (CODEX, Rune, PLAZA, CPY, etc.)" />
+
+                            <!-- Botões de Ação de Varredura e Seleção -->
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Content="🔄 Escanear Correções" Style="{StaticResource ButtonSecondaryStyle}"
+                                        Command="{Binding ScanNonSteamSavesCommand}"
+                                        Padding="14,8" Margin="0,0,8,0"
+                                        ToolTip="Faz a varredura completa nas pastas conhecidas de correções para identificar novos saves" />
+
+                                <Button Content="📁 Adicionar Pasta" Style="{StaticResource ButtonSecondaryStyle}"
+                                        Command="{Binding AddCustomNonSteamFolderCommand}"
+                                        Padding="14,8" Margin="0,0,8,0"
+                                        ToolTip="Adiciona uma pasta personalizada no seu computador para verificar saves" />
+
+                                <Button Content="☑️ Marcar Todos" Style="{StaticResource ButtonSecondaryStyle}"
+                                        Command="{Binding SelectAllNonSteamCommand}"
+                                        Padding="12,8" Margin="0,0,6,0" />
+
+                                <Button Content="⬜ Desmarcar" Style="{StaticResource ButtonSecondaryStyle}"
+                                        Command="{Binding DeselectAllNonSteamCommand}"
+                                        Padding="12,8" Margin="0,0,8,0" />
+                            </StackPanel>
+
+                            <!-- Ações de Backup e Nuvem -->
+                            <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                                <CheckBox Content="☁️ Salvar na Nuvem"
+                                          IsChecked="{Binding AutoUploadToCloudNonSteamBackup}"
+                                          Foreground="#4FC3F7" FontWeight="SemiBold" FontSize="13" Margin="0,0,12,0"
+                                          VerticalAlignment="Center"
+                                          ToolTip="Envia automaticamente cópia dos backups para o Google Drive ao concluir" />
+
+                                <Button Content="💾 Fazer Backup dos Selecionados" Style="{StaticResource ButtonPrimaryStyle}"
+                                        Command="{Binding BackupSelectedNonSteamCommand}"
+                                        Padding="18,9" FontSize="13.5"
+                                        ToolTip="Gera pacotes zip de backup compatíveis com o restaurador do SteamSaveMigrator para todos os jogos marcados" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- PAINEL DE STATUS & PROGRESSO -->
+                    <Border Grid.Row="2" Padding="14" Margin="0,0,0,12">
+                        <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource CardBorderStyle}">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                            <Condition Binding="{Binding IsNonSteamScanning}" Value="False" />
+                                            <Condition Binding="{Binding IsNonSteamBackingUp}" Value="False" />
+                                            <Condition Binding="{Binding NonSteamBackupResultSummary}" Value="" />
+                                            <Condition Binding="{Binding ShowMonitoredLocations}" Value="False" />
+                                        </MultiDataTrigger.Conditions>
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </MultiDataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+
+                        <StackPanel>
+                            <!-- Progresso de Varredura -->
+                            <StackPanel Visibility="{Binding IsNonSteamScanning, Converter={StaticResource BoolToVisConverter}}" Margin="0,0,0,8">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <TextBlock Text="🔄 " FontSize="14" />
+                                    <TextBlock Text="{Binding NonSteamScanStatus}" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource BrushAccent}" />
+                                </StackPanel>
+                                <ProgressBar IsIndeterminate="True" Height="6" Background="{StaticResource BrushSurfaceLight}" Foreground="{StaticResource BrushAccent}" />
+                            </StackPanel>
+
+                            <!-- Progresso de Backup -->
+                            <StackPanel Visibility="{Binding IsNonSteamBackingUp, Converter={StaticResource BoolToVisConverter}}" Margin="0,0,0,8">
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <TextBlock Text="💾 " FontSize="14" />
+                                    <TextBlock Text="{Binding NonSteamBackupProgressText}" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource BrushSteamGreenText}" />
+                                </StackPanel>
+                                <ProgressBar Value="{Binding NonSteamBackupProgress}" Maximum="100" Height="8" Background="{StaticResource BrushSurfaceLight}" Foreground="{StaticResource BrushSteamGreen}" />
+                            </StackPanel>
+
+                            <!-- Resumo do Resultado do Backup -->
+                            <Border Background="{StaticResource BrushSuccessBg}" BorderBrush="{StaticResource BrushSuccessBorder}" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,0,8">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding NonSteamBackupResultSummary}" Value="">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock Text="{Binding NonSteamBackupResultSummary}" FontSize="13" FontWeight="SemiBold" Foreground="#FFFFFF" />
+                            </Border>
+
+                            <!-- Painel Expansível de Pastas Monitoradas -->
+                            <StackPanel Visibility="{Binding ShowMonitoredLocations, Converter={StaticResource BoolToVisConverter}}">
+                                <Grid Margin="0,4,0,8">
+                                    <TextBlock Text="📂 Pastas Monitoradas Automaticamente para Correções Steam:" FontWeight="Bold" FontSize="13" Foreground="#FFFFFF" VerticalAlignment="Center" />
+                                    <Button Content="Ocultar" Style="{StaticResource ButtonSecondaryStyle}" Command="{Binding ToggleMonitoredLocationsCommand}" HorizontalAlignment="Right" Padding="10,4" FontSize="11" />
+                                </Grid>
+                                <Border Background="{StaticResource BrushSurfaceLight}" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="8" MaxHeight="140">
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                        <ItemsControl ItemsSource="{Binding MonitoredSearchLocations}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,3">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="100" />
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <Border Grid.Column="0" Background="{StaticResource BrushSurfaceCard}" CornerRadius="4" Padding="6,2" HorizontalAlignment="Left">
+                                                            <TextBlock Text="{Binding CrackSource}" FontSize="11" FontWeight="Bold" Foreground="{StaticResource BrushAccent}" />
+                                                        </Border>
+                                                        <TextBlock Grid.Column="1" Text="{Binding Path}" FontSize="12" Foreground="{StaticResource BrushTextSecondary}" VerticalAlignment="Center" Margin="8,0,0,0" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Grid.Column="2" Text="{Binding Description}" FontSize="11" Foreground="{StaticResource BrushTextMuted}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- CONTEÚDO PRINCIPAL: TABELA DE JOGOS E DETALHES -->
+                    <Grid Grid.Row="3">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2.4*" />
+                            <ColumnDefinition Width="1*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Tabela de Jogos Non-Steam -->
+                        <Border Grid.Column="0" Style="{StaticResource CardBorderStyle}" Padding="0" Margin="0,0,12,0">
+                            <DataGrid ItemsSource="{Binding FilteredNonSteamGames}"
+                                      SelectedItem="{Binding SelectedNonSteamGame}"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="False"
+                                      CanUserAddRows="False"
+                                      HeadersVisibility="Column"
+                                      GridLinesVisibility="Horizontal"
+                                      HorizontalGridLinesBrush="{StaticResource BrushBorder}"
+                                      Background="Transparent"
+                                      BorderThickness="0"
+                                      RowBackground="{StaticResource BrushSurfaceCard}"
+                                      AlternatingRowBackground="{StaticResource BrushSurfaceLight}">
+                                <DataGrid.Columns>
+                                    <!-- Checkbox Seleção em Lote -->
+                                    <DataGridCheckBoxColumn Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="50">
+                                        <DataGridCheckBoxColumn.HeaderTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="Sel." FontWeight="Bold" FontSize="13" Foreground="#FFFFFF" />
+                                            </DataTemplate>
+                                        </DataGridCheckBoxColumn.HeaderTemplate>
+                                    </DataGridCheckBoxColumn>
+
+                                    <!-- Correção / Grupo -->
+                                    <DataGridTemplateColumn Header="Correção" Width="105" IsReadOnly="True">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Border Background="{StaticResource BrushSurfaceLight}" BorderBrush="{StaticResource BrushBorderAccent}" BorderThickness="1" CornerRadius="4" Padding="6,3" HorizontalAlignment="Left" Margin="4,2">
+                                                    <TextBlock Text="{Binding CrackSource}" FontSize="11.5" FontWeight="Bold" Foreground="{StaticResource BrushAccent}" />
+                                                </Border>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+
+                                    <!-- AppID -->
+                                    <DataGridTextColumn Header="AppID" Binding="{Binding AppIdDisplay}" IsReadOnly="True" Width="85" />
+
+                                    <!-- Nome do Jogo -->
+                                    <DataGridTextColumn Header="Nome do Jogo" Binding="{Binding GameName}" IsReadOnly="False" Width="2*" FontWeight="Bold" />
+
+                                    <!-- Quantidade de Arquivos -->
+                                    <DataGridTextColumn Header="Arquivos" Binding="{Binding FileCount, StringFormat='{}{0} arq.'}" IsReadOnly="True" Width="85" />
+
+                                    <!-- Tamanho Total -->
+                                    <DataGridTextColumn Header="Tamanho" Binding="{Binding SizeFormatted}" IsReadOnly="True" Width="95" FontWeight="SemiBold" />
+
+                                    <!-- Última Modificação -->
+                                    <DataGridTextColumn Header="Modificado" Binding="{Binding LastModifiedDisplay}" IsReadOnly="True" Width="125" />
+
+                                    <!-- Ações por Linha -->
+                                    <DataGridTemplateColumn Header="Ações" Width="240" IsReadOnly="True">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" Margin="4,2">
+                                                    <Button Content="💾 Backup" Style="{StaticResource ButtonPrimaryStyle}"
+                                                            Command="{Binding DataContext.BackupSingleNonSteamCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                            CommandParameter="{Binding}"
+                                                            Padding="8,4" FontSize="11.5" Margin="0,0,6,0"
+                                                            ToolTip="Fazer backup individual deste jogo" />
+                                                    <Button Content="☁️ Nuvem" Style="{StaticResource ButtonSecondaryStyle}"
+                                                            Command="{Binding DataContext.UploadNonSteamGameToCloudCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                            CommandParameter="{Binding}"
+                                                            Padding="8,4" FontSize="11.5" Margin="0,0,6,0"
+                                                            ToolTip="Fazer backup e enviar para o Google Drive imediatamente" />
+                                                    <Button Content="📂 Pasta" Style="{StaticResource ButtonSecondaryStyle}"
+                                                            Command="{Binding DataContext.OpenNonSteamFolderCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                            CommandParameter="{Binding SavePath}"
+                                                            Padding="8,4" FontSize="11.5"
+                                                            ToolTip="Abrir a pasta do save no Windows Explorer" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Border>
+
+                        <!-- Painel Lateral de Detalhes do Jogo Selecionado -->
+                        <Border Grid.Column="1" Style="{StaticResource CardBorderStyle}" Padding="16">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <!-- Título e Cabeçalho do Jogo -->
+                                <StackPanel Grid.Row="0" Margin="0,0,0,14">
+                                    <TextBlock Text="DETALHES DO SAVE" FontSize="11" FontWeight="Bold" Foreground="{StaticResource BrushTextMuted}" Margin="0,0,0,4" />
+                                    <TextBlock Text="{Binding SelectedNonSteamGame.GameName, TargetNullValue='Nenhum jogo selecionado'}"
+                                               FontSize="17" FontWeight="Bold" Foreground="#FFFFFF" TextWrapping="Wrap" />
+                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                        <Border Background="{StaticResource BrushSurfaceLight}" CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
+                                            <TextBlock Text="{Binding SelectedNonSteamGame.CrackSource, StringFormat='Fonte: {0}'}" FontSize="11" FontWeight="Bold" Foreground="{StaticResource BrushAccent}" />
+                                        </Border>
+                                        <Border Background="{StaticResource BrushSurfaceLight}" CornerRadius="4" Padding="6,2">
+                                            <TextBlock Text="{Binding SelectedNonSteamGame.AppIdDisplay, StringFormat='AppID: {0}'}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource BrushTextSecondary}" />
+                                        </Border>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- Caminho da Pasta -->
+                                <Border Grid.Row="1" Background="{StaticResource BrushSurfaceLight}" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,12">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <TextBlock Text="Caminho Local do Save:" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource BrushTextMuted}" />
+                                            <TextBlock Text="{Binding SelectedNonSteamGame.SavePath, TargetNullValue='Selecione um jogo para ver o caminho'}"
+                                                       FontSize="11.5" Foreground="{StaticResource BrushTextSecondary}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Content="📂" Style="{StaticResource ButtonSecondaryStyle}"
+                                                Command="{Binding OpenNonSteamFolderCommand}"
+                                                CommandParameter="{Binding SelectedNonSteamGame.SavePath}"
+                                                Padding="8,4" FontSize="13" Margin="8,0,0,0" VerticalAlignment="Center"
+                                                ToolTip="Abrir diretório no Explorer" />
+                                    </Grid>
+                                </Border>
+
+                                <!-- Lista de Arquivos Encontrados no Save -->
+                                <Grid Grid.Row="2" Margin="0,0,0,12">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Text="{Binding SelectedNonSteamGame.Files.Count, StringFormat='Arquivos Encontrados ({0}):'}" FontSize="12" FontWeight="SemiBold" Foreground="#FFFFFF" Margin="0,0,0,6" />
+                                    <Border Grid.Row="1" Background="{StaticResource BrushSurfaceLight}" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1" CornerRadius="6" Padding="6">
+                                        <ListBox ItemsSource="{Binding SelectedNonSteamGame.Files}"
+                                                 Background="Transparent" BorderThickness="0"
+                                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,3">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="{Binding RelativePath}" FontSize="11.5" Foreground="{StaticResource BrushTextSecondary}" TextTrimming="CharacterEllipsis" ToolTip="{Binding FullPath}" />
+                                                        <TextBlock Grid.Column="1" Text="{Binding SizeFormatted}" FontSize="11" Foreground="{StaticResource BrushTextMuted}" Margin="6,0,0,0" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </Border>
+                                </Grid>
+
+                                <!-- Botão de Ação do Jogo Selecionado -->
+                                <Button Grid.Row="3" Content="💾 Fazer Backup Deste Jogo"
+                                        Style="{StaticResource ButtonPrimaryStyle}"
+                                        Command="{Binding BackupSingleNonSteamCommand}"
+                                        CommandParameter="{Binding SelectedNonSteamGame}"
+                                        Padding="14,10" FontSize="13.5" HorizontalAlignment="Stretch"
+                                        IsEnabled="{Binding SelectedNonSteamGame, Converter={StaticResource NullToVisConverter}}"
+                                        ToolTip="Fazer backup individual dos arquivos deste jogo" />
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Grid>
             </TabItem>
 
             <!-- ===================================================================== -->
@@ -517,6 +929,9 @@
                                         <Button Content="⚡ Restaurar Selecionado" Style="{StaticResource ButtonPrimaryStyle}"
                                                 Command="{Binding StartAutoRestoreCommand}" Margin="0,0,8,0" Padding="14,8" FontSize="13"
                                                 ToolTip="Restaura o save e sincroniza as conquistas diretamente para as contas de destino" />
+                                        <Button Content="☁️ Enviar para Nuvem" Style="{StaticResource ButtonSecondaryStyle}"
+                                                Command="{Binding UploadLocalBackupToCloudCommand}" Margin="0,0,8,0" Padding="12,8" FontSize="13"
+                                                ToolTip="Envia o backup selecionado para o Google Drive" />
                                         <Button Content="📁 Alterar Pasta..." Style="{StaticResource ButtonSecondaryStyle}"
                                                 Command="{Binding BrowseBatchBackupOutputDirCommand}" Margin="0,0,8,0" Padding="12,8" FontSize="13"
                                                 ToolTip="Alterar a pasta de onde o aplicativo lista os backups locais" />
@@ -591,6 +1006,17 @@
                                             <DataGridTextColumn Header="🏆 Conquistas" Binding="{Binding AchievementsDisplay}" Width="110" Foreground="{StaticResource BrushGold}" FontWeight="Bold" />
                                             <DataGridTextColumn Header="Tamanho" Binding="{Binding FormattedSize}" Width="95" />
                                             <DataGridTextColumn Header="Data do Backup" Binding="{Binding CreatedTime, StringFormat='{}{0:dd/MM/yyyy HH:mm}'}" Width="125" />
+                                            <DataGridTemplateColumn Header="Nuvem" Width="95">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <Button Content="☁️ Enviar" Style="{StaticResource ButtonSecondaryStyle}"
+                                                                Command="{Binding DataContext.UploadLocalBackupToCloudCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                                CommandParameter="{Binding}"
+                                                                Padding="6,3" FontSize="11.5"
+                                                                ToolTip="Enviar este backup local para o Google Drive agora" />
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
                                         </DataGrid.Columns>
                                     </DataGrid>
                                 </Border>
@@ -836,8 +1262,13 @@
 
                                     <!-- Botão Atualizar Nuvem -->
                                     <Button Content="🔄 Atualizar Backups" Style="{StaticResource ButtonSecondaryStyle}"
-                                            Command="{Binding RefreshCloudBackupsCommand}" Padding="12,8" FontSize="13"
+                                            Command="{Binding RefreshCloudBackupsCommand}" Margin="0,0,8,0" Padding="12,8" FontSize="13"
                                             Visibility="{Binding IsGoogleDriveConnected, Converter={StaticResource BoolToVisConverter}}" />
+
+                                    <!-- Botão Configurar Credenciais e Guia OAuth -->
+                                    <Button Content="⚙️ Credenciais &amp; Guia OAuth" Style="{StaticResource ButtonSecondaryStyle}"
+                                            Command="{Binding ToggleConfiguringCredentialsCommand}" Padding="12,8" FontSize="13"
+                                            ToolTip="Configurar o arquivo credentials.json ou consultar o tutorial para habilitar a conta teste" />
                                 </StackPanel>
 
                                 <!-- Painel Expansível: Configuração de Credenciais OAuth -->
@@ -857,6 +1288,38 @@
                                             <Button Grid.Column="1" Content="🌐 Abrir Google Cloud Console" Style="{StaticResource ButtonSecondaryStyle}"
                                                     Command="{Binding OpenGoogleConsoleCommand}" Padding="10,6" FontSize="12" VerticalAlignment="Center" />
                                         </Grid>
+
+                                        <!-- Guia Passo a Passo: Habilitar API, Conta Teste e credentials.json -->
+                                        <Border Background="{StaticResource BrushSurfaceCard}" CornerRadius="6" Padding="12" Margin="0,0,0,10" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1">
+                                            <StackPanel>
+                                                <Grid Margin="0,0,0,8">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0">
+                                                        <TextBlock Text="📖 Guia Passo a Passo: Ativar API e Usuário Teste" FontWeight="Bold" FontSize="13" Foreground="#FFFFFF" />
+                                                        <TextBlock Text="Instruções para configurar a conta teste no Google Cloud e obter o arquivo .json" FontSize="12" Foreground="{StaticResource BrushTextSecondary}" Margin="0,2,0,0" />
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                                        <Button Content="📄 Abrir no Bloco de Notas" Style="{StaticResource ButtonSecondaryStyle}"
+                                                                Command="{Binding OpenOAuthGuideCommand}" Margin="0,0,8,0" Padding="10,6" FontSize="12"
+                                                                ToolTip="Abre o tutorial passo a passo no Bloco de Notas" />
+                                                        <Button Content="💾 Salvar na Área de Trabalho" Style="{StaticResource ButtonSecondaryStyle}"
+                                                                Command="{Binding ExportOAuthGuideCommand}" Padding="10,6" FontSize="12"
+                                                                ToolTip="Salva o arquivo de tutorial Como_Configurar_Google_Drive_SteamSaveMigrator.txt no seu Desktop" />
+                                                    </StackPanel>
+                                                </Grid>
+                                                <Expander Header="👁️ Ler Tutorial Passo a Passo Aqui Mesmo" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource BrushAccent}">
+                                                    <Border Background="#0D1117" CornerRadius="6" Padding="10" Margin="0,6,0,0" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1">
+                                                        <ScrollViewer MaxHeight="220" VerticalScrollBarVisibility="Auto">
+                                                            <TextBox Text="{Binding OAuthGuideText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap"
+                                                                     Background="Transparent" BorderThickness="0" Foreground="#ECEFF1" FontSize="11.5" FontFamily="Consolas, Segoe UI, monospace" />
+                                                        </ScrollViewer>
+                                                    </Border>
+                                                </Expander>
+                                            </StackPanel>
+                                        </Border>
 
                                         <!-- Botão de Importação do credentials.json -->
                                         <Border Background="{StaticResource BrushSurfaceCard}" CornerRadius="6" Padding="12" Margin="0,0,0,10" BorderBrush="{StaticResource BrushBorder}" BorderThickness="1">
@@ -1263,7 +1726,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource BrushTextSecondary}" />
-                <TextBlock Grid.Column="1" Text="{Binding FooterStatusDisplay, FallbackValue='SteamSaveMigrator v1.3.1 • Backup em Lote, Conquistas &amp; Restauração Automática'}" FontSize="12" Foreground="{StaticResource BrushTextMuted}" />
+                <TextBlock Grid.Column="1" Text="{Binding FooterStatusDisplay, FallbackValue='SteamSaveMigrator v1.5.0 • Backup em Lote, Conquistas &amp; Restauração Automática'}" FontSize="12" Foreground="{StaticResource BrushTextMuted}" />
             </Grid>
         </Border>
     </Grid>

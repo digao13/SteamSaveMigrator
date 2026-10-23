@@ -2,11 +2,11 @@
 ; Gerado para instalação completa, autônoma e com todas as dependências incluídas
 
 #ifndef MyAppVersion
-#define MyAppVersion "1.3.1"
+#define MyAppVersion "1.5.0"
 #endif
 
 #ifndef PublishDir
-#define PublishDir "dist\publish_v131"
+#define PublishDir "dist\publish_v150"
 #endif
 
 #define MyAppName "SteamSave Migrator"

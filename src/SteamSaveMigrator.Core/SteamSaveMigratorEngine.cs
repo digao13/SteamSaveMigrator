@@ -333,5 +333,71 @@ public class SteamSaveMigratorEngine
 
         return list.OrderByDescending(b => b.CreatedTime ?? DateTime.MinValue).ToList();
     }
+
+    /// <summary>
+    /// Detecta todos os saves de jogos non-Steam e correções conhecidas (CODEX, PLAZA, CPY, HOODLUM, Rune, Voices38, etc.).
+    /// </summary>
+    public async Task<List<NonSteamGameSave>> DetectNonSteamSavesAsync(
+        IEnumerable<string>? customFolders = null,
+        IProgress<string>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        IReadOnlyDictionary<uint, string>? localDict = null;
+        try
+        {
+            var localGames = GetInstalledGames();
+            if (localGames.Count > 0)
+            {
+                localDict = localGames.ToDictionary(g => g.AppId, g => g.Name);
+            }
+        }
+        catch { }
+
+        return await NonSteamSaveDetector.DetectAllAsync(customFolders, localDict, progress, cancellationToken);
+    }
+
+    /// <summary>
+    /// Cria o backup de um jogo non-Steam individual empacotando os arquivos em um pacote .zip com manifesto compatível.
+    /// </summary>
+    public Task<string> BackupNonSteamGameAsync(
+        NonSteamGameSave save,
+        string outputZipPath,
+        string? userProfile = null,
+        IProgress<BackupProgressReport>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        var steamGame = save.ToSteamGame();
+        return _backupService.CreateBackupAsync(
+            steamGame,
+            outputZipPath,
+            userProfile,
+            SteamInfo.SteamPath,
+            null,
+            save.CrackSource,
+            progress,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Executa o backup em lote de múltiplos jogos non-Steam selecionados.
+    /// </summary>
+    public Task<BatchBackupResult> BackupMultipleNonSteamGamesAsync(
+        IEnumerable<NonSteamGameSave> saves,
+        string outputDirectory,
+        string? userProfile = null,
+        IProgress<BatchBackupProgressReport>? progress = null,
+        CancellationToken cancellationToken = default)
+    {
+        var games = saves.Select(s => s.ToSteamGame()).ToList();
+        return _backupService.CreateBatchBackupAsync(
+            games,
+            outputDirectory,
+            userProfile,
+            SteamInfo.SteamPath,
+            null,
+            "NonSteam",
+            progress,
+            cancellationToken);
+    }
 }
 

@@ -95,4 +95,14 @@ public interface IGoogleDriveService
     /// Configura credenciais importando o arquivo credentials.json ou client_secret.json baixado do Google Cloud Console.
     /// </summary>
     bool ConfigureCredentialsFromJson(string jsonFilePath);
+
+    /// <summary>
+    /// Retorna o texto formatado do guia passo a passo para criação do OAuth no Google Cloud.
+    /// </summary>
+    string GetOAuthSetupGuideText();
+
+    /// <summary>
+    /// Salva o guia passo a passo em um arquivo .txt e retorna o caminho salvo.
+    /// </summary>
+    string ExportOAuthSetupGuideToFile(string? customTargetDirectory = null);
 }

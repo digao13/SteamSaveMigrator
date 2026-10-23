@@ -39,10 +39,14 @@ public class GoogleDriveService : IGoogleDriveService
     /// 3. Pela interface do usuário (botão "Configurar Credenciais do Google")
     /// </summary>
     public static string DefaultBuiltInClientId =>
-        Environment.GetEnvironmentVariable("GOOGLE_CLIENT_ID") ?? string.Empty;
+        Environment.GetEnvironmentVariable("GOOGLE_CLIENT_ID") is { Length: > 0 } envId
+            ? envId
+            : string.Empty;
 
     public static string DefaultBuiltInClientSecret =>
-        Environment.GetEnvironmentVariable("GOOGLE_CLIENT_SECRET") ?? string.Empty;
+        Environment.GetEnvironmentVariable("GOOGLE_CLIENT_SECRET") is { Length: > 0 } envSecret
+            ? envSecret
+            : string.Empty;
 
     private string _clientId = DefaultBuiltInClientId;
     private string _clientSecret = DefaultBuiltInClientSecret;
@@ -927,5 +931,96 @@ public class GoogleDriveService : IGoogleDriveService
         {
             return false;
         }
+    }
+
+    public string GetOAuthSetupGuideText()
+    {
+        return
+@"================================================================================
+GUIA PASSO A PASSO: COMO CONFIGURAR O GOOGLE DRIVE NO STEAMSAVE MIGRATOR
+================================================================================
+
+Para sincronizar e salvar seus backups no Google Drive com total segurança e
+privacidade, você precisa criar credenciais gratuitas de aplicativo no Google Cloud.
+Siga os 5 passos rápidos abaixo:
+
+--------------------------------------------------------------------------------
+PASSO 1: ABRIR O GOOGLE CLOUD CONSOLE
+--------------------------------------------------------------------------------
+1. Abra seu navegador e acesse:
+   https://console.cloud.google.com/
+2. Faça login com a sua conta Google pessoal.
+3. No topo da tela, clique no seletor de projetos e clique em ""Novo Projeto"".
+4. Digite um nome (exemplo: ""SteamSaveMigrator"") e clique em ""Criar"".
+
+--------------------------------------------------------------------------------
+PASSO 2: HABILITAR A API DO GOOGLE DRIVE
+--------------------------------------------------------------------------------
+1. No menu lateral esquerdo (☰), vá em:
+   ""APIs e Serviços"" > ""Biblioteca"" (Library).
+2. Na caixa de pesquisa, digite ""Google Drive API"" e pressione Enter.
+3. Clique em ""Google Drive API"" e depois clique no botão azul ""Ativar"" (Enable).
+
+--------------------------------------------------------------------------------
+PASSO 3: CONFIGURAR A TELA DE CONSENTIMENTO OAUTH E USUÁRIOS DE TESTE
+--------------------------------------------------------------------------------
+1. No menu lateral, acesse:
+   ""APIs e Serviços"" > ""Tela de permissão OAuth"" (OAuth consent screen).
+2. Selecione o tipo de usuário: ""Externo"" (External) e clique em ""Criar"".
+3. Preencha as informações obrigatórias:
+   - Nome do app: SteamSaveMigrator
+   - E-mail de suporte do usuário: seu e-mail
+   - Dados de contato do desenvolvedor: seu e-mail
+4. Clique em ""Salvar e continuar"".
+5. Na etapa de ""Escopos"", clique em ""Salvar e continuar"".
+6. [ETAPA CRÍTICA - USUÁRIOS DE TESTE]:
+   - Na página ""Usuários de teste"" (Test users), clique em ""+ Adicionar usuários"".
+   - Digite o seu endereço de e-mail do Google (aquele com o qual você fará login).
+   - Clique em ""Salvar e continuar"" e conclua o assistente.
+   * IMPORTANTE: Sem adicionar seu e-mail como Usuário de Teste, o Google bloqueará
+     a conexão com o erro '403: Acesso negado' / 'access_denied'.
+
+--------------------------------------------------------------------------------
+PASSO 4: CRIAR O ID DO CLIENTE OAUTH E BAIXAR O JSON
+--------------------------------------------------------------------------------
+1. No menu lateral, clique em ""Credenciais"" (Credentials).
+2. No topo da página, clique em ""+ Criar Credenciais"" > ""ID do cliente OAuth"".
+3. No campo ""Tipo de aplicativo"", escolha:
+   ""Aplicativo para Computador"" (Desktop App).
+4. Nomeie como: ""SteamSaveMigrator Desktop"" e clique em ""Criar"".
+5. Uma janela pop-up será exibida com o seu Client ID.
+   Clique no botão ""Fazer o download do JSON"" (ou no ícone de download da lista).
+   O arquivo baixado terá um nome parecido com: 'client_secret_xxxxxxxx.json'.
+
+--------------------------------------------------------------------------------
+PASSO 5: IMPORTAR NO STEAMSAVE MIGRATOR
+--------------------------------------------------------------------------------
+1. Abra o SteamSave Migrator e clique na aba ""☁️ Nuvem & Monitor"".
+2. No painel de configuração de credenciais, clique em:
+   ""📁 Importar arquivo 'credentials.json'"".
+3. Selecione o arquivo .json que você acabou de baixar no Passo 4.
+   (O aplicativo configurará e salvará o arquivo automaticamente).
+   
+   DICA ALTERNATIVA:
+   Você também pode simplesmente renomear o arquivo para 'credentials.json' e
+   colocá-lo diretamente dentro da mesma pasta onde está instalado o
+   'SteamSaveMigrator.Wpf.exe'.
+
+4. Clique no botão verde ""🔑 Conectar Google Drive"". O navegador abrirá a tela
+   oficial da conta Google. Faça login com o mesmo e-mail adicionado no Passo 3.
+5. Pronto! Agora todos os seus backups de jogos da Steam e correções Non-Steam
+   serão sincronizados com sua pasta 'SteamSaveMigrator_Backups' no Google Drive!
+================================================================================";
+    }
+
+    public string ExportOAuthSetupGuideToFile(string? customTargetDirectory = null)
+    {
+        var targetDir = !string.IsNullOrWhiteSpace(customTargetDirectory) && Directory.Exists(customTargetDirectory)
+            ? customTargetDirectory
+            : Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+
+        var filePath = Path.Combine(targetDir, "Como_Configurar_Google_Drive_SteamSaveMigrator.txt");
+        File.WriteAllText(filePath, GetOAuthSetupGuideText(), System.Text.Encoding.UTF8);
+        return filePath;
     }
 }
