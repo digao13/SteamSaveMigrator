@@ -19,7 +19,9 @@
 
 [CmdletBinding()]
 param(
-    [string]$Version = "1.5.1",
+    [string]$Version = "1.5.2",
+    [string]$ReleaseTitle = "",
+    [string]$ReleaseNotes = "",
     [switch]$UpdateLocalInstall = $true,
     [switch]$CreateGitHubRelease = $true
 )
@@ -119,13 +121,26 @@ if ($isccExe) {
     Write-Warning "Compilador Inno Setup (ISCC.exe) não encontrado."
 }
 
-# 5. PUBLICAR RELEASE NO GITHUB (VIA GH CLI)
+# 5. GERAR PACOTE PORTÁTIL E PUBLICAR RELEASE NO GITHUB (VIA GH CLI)
+$portableZip = Join-Path $scriptRoot "dist\SteamSaveMigrator_v${Version}_Portable.zip"
+$portableTemp = Join-Path $scriptRoot "dist\publish_portable"
+if (Test-Path $portableTemp) { Remove-Item $portableTemp -Recurse -Force }
+Copy-Item -Path $publishDir -Destination $portableTemp -Recurse -Force
+Remove-Item -Path (Join-Path $portableTemp "credentials.json"), (Join-Path $portableTemp "client_secrets.cfg") -ErrorAction SilentlyContinue -Force
+if (Test-Path $portableZip) { Remove-Item $portableZip -Force }
+Compress-Archive -Path "$portableTemp\*" -DestinationPath $portableZip -CompressionLevel Optimal
+Remove-Item $portableTemp -Recurse -Force -ErrorAction SilentlyContinue
+Write-Host " -> Pacote portátil .zip gerado: $portableZip" -ForegroundColor Cyan
+
 if ($CreateGitHubRelease -and (Get-Command gh -ErrorAction SilentlyContinue) -and (Test-Path $setupExe)) {
     Write-Host "`n[5/7] Publicando Release no GitHub..." -ForegroundColor Green
     try {
         $tag = "v$Version"
-        $title = "SteamSave Migrator v$Version - Backups Non-Steam, Nuvem e Guia OAuth"
-        $notes = @"
+        $title = if (![string]::IsNullOrWhiteSpace($ReleaseTitle)) { $ReleaseTitle } else { "SteamSave Migrator v$Version" }
+        $notes = if (![string]::IsNullOrWhiteSpace($ReleaseNotes)) {
+            $ReleaseNotes
+        } else {
+@"
 ## Novidades da Versao $Version
 
 - Aba Non-Steam: Deteccao e backup automatico de saves para jogos com correcoes (CODEX, Rune, PLAZA, CPY, HOODLUM, Voices38, Goldberg, EMPRESS, SKIDROW, FLT).
@@ -133,13 +148,14 @@ if ($CreateGitHubRelease -and (Get-Command gh -ErrorAction SilentlyContinue) -an
 - Guia OAuth Interativo: Tutorial completo para habilitar a Google Drive API e adicionar usuario de teste.
 - Seguranca: Codigo e instalador seguros sem credenciais expostas.
 "@
+        }
 
         gh release view $tag > $null 2>&1
         if ($LASTEXITCODE -eq 0) {
-            gh release upload $tag $setupExe --clobber
-            Write-Host " -> Release $tag atualizada com o novo instalador no GitHub!" -ForegroundColor Cyan
+            gh release upload $tag $setupExe $portableZip --clobber
+            Write-Host " -> Release $tag atualizada com novos binários no GitHub!" -ForegroundColor Cyan
         } else {
-            gh release create $tag $setupExe --title $title --notes $notes
+            gh release create $tag $setupExe $portableZip --title $title --notes $notes
             Write-Host " -> Release $tag criada com sucesso no GitHub!" -ForegroundColor Cyan
         }
     } catch {
