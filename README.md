@@ -147,19 +147,46 @@ Este repositório foi **sanitizado e configurado** de acordo com rigorosos padr�
 
 - **Nenhum dado pessoal** (nomes reais, Steam IDs privados ou credenciais) está exposto no código ou nos testes.
 - **Nenhum arquivo de save pessoal** é versionado: a pasta `backups/` e extensões de arquivos de saves (`*.zip`, `*.sl2`, `*.sav`, `*.dat`) estão protegidas pelo `.gitignore`.
-- **Configuração do Google Drive em Forks**:
-  - Para usar a integração com Google Drive em seu próprio fork ou compilação local, configure suas credenciais OAuth do Google Cloud através de:
-    1. **Variáveis de Ambiente**:
-       ```powershell
-       $env:GOOGLE_CLIENT_ID = "SEU_CLIENT_ID.apps.googleusercontent.com"
-       $env:GOOGLE_CLIENT_SECRET = "SEU_CLIENT_SECRET"
-       ```
-    2. **Arquivo de Configuração**:
-       - Copie o arquivo `client_secret.example.json` para `client_secret.json` na raiz da aplicação.
-    3. **Pela Interface Gráfica**:
-       - Clique em **"Configurar Credenciais do Google"** na aba *Nuvem & Monitor* e importe o arquivo JSON ou cole as chaves.
+- **Configuração do Google Drive (Passo a Passo Oficial)**:
+  Para utilizar o backup e sincronização em nuvem no Google Drive mantendo sua total privacidade e sem limites de cota de terceiros, siga o tutorial rápido abaixo para gerar suas credenciais gratuitas no Google Cloud:
+  
+  1. **Criar Projeto no Google Cloud**:
+     - Acesse o [Google Cloud Console](https://console.cloud.google.com/) e faça login com sua conta Google.
+     - Crie um novo projeto (ex: `SteamSaveMigrator`).
+  2. **Ativar a Google Drive API**:
+     - No menu lateral (☰), vá em **APIs e Serviços** > **Biblioteca**.
+     - Procure por `Google Drive API` e clique em **Ativar** (Enable).
+  3. **Configurar Tela de Permissão OAuth & Usuário de Teste**:
+     - Vá em **APIs e Serviços** > **Tela de permissão OAuth** (OAuth consent screen).
+     - Escolha o tipo **Externo** (External) e clique em Criar.
+     - Preencha o nome do app (`SteamSaveMigrator`) e seu e-mail de suporte.
+     - Avance até a etapa **Usuários de teste** (Test users).
+     - **[CRÍTICO]**: Clique em **+ Adicionar usuários** e digite o seu próprio endereço de e-mail do Google (aquele que fará o login no app). Salve e conclua. *(Sem este passo, o Google bloqueará o login com erro `403: access_denied`)*.
+  4. **Criar ID do Cliente OAuth (Desktop App)**:
+     - No menu lateral, acesse **Credenciais** > **+ Criar Credenciais** > **ID do cliente OAuth**.
+     - No tipo de aplicativo, escolha **Aplicativo para Computador** (Desktop App).
+     - Clique em **Criar** e depois clique no botão **Fazer o download do JSON** (arquivo com nome `client_secret_...json`).
+  5. **Importar no Aplicativo**:
+     - Abra o SteamSave Migrator e vá na aba **☁️ Nuvem & Monitor**.
+     - Clique em **📁 Importar arquivo 'credentials.json'** e selecione o arquivo baixado (ou renomeie-o para `credentials.json` e coloque na mesma pasta do executável).
+     - Clique em **🔑 Conectar Google Drive**. Pronto!
+
+  > 💡 **Nota**: O próprio aplicativo possui um botão **"📄 Abrir no Bloco de Notas"** e visualizador interno na aba *Nuvem & Monitor* com este mesmo guia detalhado.
 
 Para detalhes completos de segurança e privacidade, consulte o documento [SECURITY.md](SECURITY.md).
+
+---
+
+## 🆕 Novidades da Versão 1.5.0
+
+- 🏴‍☠️ **Nova Aba Non-Steam**: Detecção e backup automático de saves para jogos com correções (**CODEX, Rune, PLAZA, CPY, HOODLUM, Voices38, Goldberg, EMPRESS, SKIDROW, FLT**).
+- ☁️ **Sincronização em Nuvem Ampliada**:
+  - Checkbox para enviar cópia para o Google Drive automaticamente ao concluir backups manuais (individuais e em lote).
+  - Botão de envio direto para a nuvem na lista de backups locais da aba *Restaurar Saves*.
+  - Upload direto para a nuvem com 1 clique a partir da lista de jogos Non-Steam.
+- 📖 **Guia OAuth Interativo**: Tutorial completo integrado no app e exportável para o Bloco de Notas ou Área de Trabalho.
+- 🛡️ **Segurança Total para o GitHub**: Código-fonte desacoplado de credenciais fixas, permitindo forks e compilações limpas.
+- ⚙️ **Automação de Build e Release**: Script `build-release.ps1` para gestão contínua de versões locais e públicas.
 
 ---
 
