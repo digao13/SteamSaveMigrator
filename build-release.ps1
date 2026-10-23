@@ -188,6 +188,28 @@ if ($UpdateLocalInstall) {
         $lnk.Description = "SteamSave Migrator v$Version"
         $lnk.Save()
         Write-Host " -> Atalho atualizado na Área de Trabalho com sucesso!" -ForegroundColor Cyan
+
+        # Atualiza atalhos legados no Menu Iniciar e Inicialização
+        $startMenuLnk = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\SteamSaveMigrator.lnk"
+        if (Test-Path $startMenuLnk) {
+            $sLnk = $sh.CreateShortcut($startMenuLnk)
+            $sLnk.TargetPath = Join-Path $localTarget "SteamSaveMigrator.Wpf.exe"
+            $sLnk.WorkingDirectory = $localTarget
+            $sLnk.Save()
+        }
+        $startupLnk = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Startup\SteamSaveMigrator.lnk"
+        if (Test-Path $startupLnk) {
+            $stLnk = $sh.CreateShortcut($startupLnk)
+            $stLnk.TargetPath = Join-Path $localTarget "SteamSaveMigrator.Wpf.exe"
+            $stLnk.WorkingDirectory = $localTarget
+            $stLnk.Save()
+        }
+
+        # Atualiza pasta legada bin\Release\app se existir
+        $legacyBinApp = Join-Path $scriptRoot "src\SteamSaveMigrator.Wpf\bin\Release\app"
+        if (Test-Path $legacyBinApp) {
+            Copy-Item -Path "$publishDir\*" -Destination $legacyBinApp -Recurse -Force
+        }
     }
 }
 
