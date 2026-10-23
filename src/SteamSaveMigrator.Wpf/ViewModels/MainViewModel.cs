@@ -25,7 +25,7 @@ public class MainViewModel : ViewModelBase
     private readonly SteamSaveMigratorEngine _engine = new();
 
     // Versão da Aplicação
-    public string AppVersion => typeof(MainViewModel).Assembly.GetName().Version is { } v ? $"{v.Major}.{v.Minor}.{v.Build}" : "1.5.1";
+    public string AppVersion => typeof(MainViewModel).Assembly.GetName().Version is { } v ? $"{v.Major}.{v.Minor}.{v.Build}" : "1.5.2";
     public string AppVersionDisplay => $"v{AppVersion}";
     public string WindowTitle => $"SteamSave Migrator {AppVersionDisplay} \u2022 Migrador, Conquistas e Conversor de Saves Steam";
     public string FooterStatusDisplay => $"SteamSaveMigrator {AppVersionDisplay} \u2022 Backup em Lote, Conquistas & Restauração Automática";
