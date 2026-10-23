@@ -2,7 +2,7 @@
 ; Gerado para instalaÃ§Ã£o completa, autÃ´noma e com todas as dependÃªncias incluÃ­das
 
 #ifndef MyAppVersion
-#define MyAppVersion "1.5.0"
+#define MyAppVersion "1.5.1"
 #endif
 
 #ifndef PublishDir
@@ -50,4 +50,5 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+
 
