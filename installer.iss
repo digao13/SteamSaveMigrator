@@ -1,5 +1,5 @@
-﻿; Script de InstalaÃ§Ã£o do SteamSave Migrator
-; Gerado para instalaÃ§Ã£o completa, autÃ´noma e com todas as dependÃªncias incluÃ­das
+﻿; Script de Instalação do SteamSave Migrator
+; Gerado para instalação completa, autônoma e com todas as dependências incluídas
 
 #ifndef MyAppVersion
 #define MyAppVersion "1.5.1"
@@ -14,7 +14,7 @@
 #define MyAppExeName "SteamSaveMigrator.Wpf.exe"
 
 [Setup]
-; Identificador Ãºnico do aplicativo
+; Identificador único do aplicativo
 AppId={{8B41D17A-7CF5-4309-9E6D-EFE4CEB077C1}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
@@ -50,5 +50,3 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: de
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
-
-

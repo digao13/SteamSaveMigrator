@@ -24,11 +24,11 @@ public class MainViewModel : ViewModelBase
 {
     private readonly SteamSaveMigratorEngine _engine = new();
 
-    // VersÃ£o da AplicaÃ§Ã£o
+    // Versão da Aplicação
     public string AppVersion => typeof(MainViewModel).Assembly.GetName().Version is { } v ? $"{v.Major}.{v.Minor}.{v.Build}" : "1.5.1";
     public string AppVersionDisplay => $"v{AppVersion}";
     public string WindowTitle => $"SteamSave Migrator {AppVersionDisplay} \u2022 Migrador, Conquistas e Conversor de Saves Steam";
-    public string FooterStatusDisplay => $"SteamSaveMigrator {AppVersionDisplay} \u2022 Backup em Lote, Conquistas & RestauraÃ§Ã£o AutomÃ¡tica";
+    public string FooterStatusDisplay => $"SteamSaveMigrator {AppVersionDisplay} \u2022 Backup em Lote, Conquistas & Restauração Automática";
 
     // Estados gerais
     private bool _isBusy;
@@ -54,7 +54,7 @@ public class MainViewModel : ViewModelBase
     private string _backupProgressText = string.Empty;
     private string _backupResultSummary = string.Empty;
 
-    // Backup em Lote (MÃºltiplos Jogos de Uma Vez)
+    // Backup em Lote (Múltiplos Jogos de Uma Vez)
     private string _batchBackupOutputDir = Path.Combine(Environment.CurrentDirectory, "backups");
     private bool _isBatchBackingUp;
     private double _batchOverallProgress;
@@ -62,7 +62,7 @@ public class MainViewModel : ViewModelBase
     private string _batchCurrentGameText = string.Empty;
     private string _batchBackupSummary = string.Empty;
 
-    // RestauraÃ§Ã£o AutomÃ¡tica (Zero ComplicaÃ§Ã£o)
+    // Restauração Automática (Zero Complicação)
     private string _restoreZipPath = string.Empty;
     private ObservableCollection<string> _restoreZipQueue = new();
     private BackupManifest? _restoreManifest;
@@ -85,7 +85,7 @@ public class MainViewModel : ViewModelBase
     private SteamUserAccount? _selectedSourceSteamAccount;
     private SteamUserAccount? _selectedTargetSteamAccount;
     private bool _migrateSteamProfile = true;
-    private string _restoreSourceSteamText = "NÃ£o identificado";
+    private string _restoreSourceSteamText = "Não identificado";
     private string _restoreSourceSteamDetails = string.Empty;
     private bool _hasSourceSteamAccount;
 
@@ -95,7 +95,7 @@ public class MainViewModel : ViewModelBase
     private WindowsProfileInfo? _selectedTargetWindowsProfile;
     private bool _migrateWindowsUser = true;
 
-    // Backups Locais (Lista inteligente equivalente Ã  Nuvem)
+    // Backups Locais (Lista inteligente equivalente à Nuvem)
     private ObservableCollection<LocalBackupInfo> _localBackups = new();
     private ICollectionView? _filteredLocalBackups;
     private string _localSearchText = string.Empty;
@@ -115,7 +115,7 @@ public class MainViewModel : ViewModelBase
     private string _credentialsStatusText = string.Empty;
     private bool _isGoogleDriveConnected;
     private string _googleDriveUserEmail = string.Empty;
-    private string _googleDriveStatusText = "NÃ£o conectado ao Google Drive";
+    private string _googleDriveStatusText = "Não conectado ao Google Drive";
     private ObservableCollection<CloudBackupInfo> _cloudBackups = new();
     private ICollectionView? _filteredCloudBackups;
     private string _cloudSearchText = string.Empty;
@@ -126,7 +126,7 @@ public class MainViewModel : ViewModelBase
     private string _cloudRestoreProgressText = string.Empty;
     private string _cloudResultSummary = string.Empty;
 
-    // Game Watcher (Monitor AutomÃ¡tico de Fechamento de Jogos)
+    // Game Watcher (Monitor Automático de Fechamento de Jogos)
     private SteamGameWatcherService? _gameWatcher;
     private bool _isGameWatcherActive;
     private string _watcherStatusBadge = "Inativo (Parado)";
@@ -139,21 +139,21 @@ public class MainViewModel : ViewModelBase
     private int _watcherPollInterval = 2;
     private int _watcherPostExitDelay = 3;
 
-    // ConfiguraÃ§Ãµes de InicializaÃ§Ã£o e MinimizaÃ§Ã£o na Bandeja
+    // Configurações de Inicialização e Minimização na Bandeja
     private bool _startWithWindows;
     private bool _minimizeToTrayOnClose = true;
     private bool _autoStartWatcherOnLaunch = true;
     private bool _openSteamOnStartup = true;
     private string _settingsSavedFeedback = string.Empty;
 
-    // Backups Non-Steam (CorreÃ§Ãµes: CODEX, PLAZA, CPY, HOODLUM, Rune, Voices38, etc.)
+    // Backups Non-Steam (Correções: CODEX, PLAZA, CPY, HOODLUM, Rune, Voices38, etc.)
     private ObservableCollection<NonSteamGameSave> _nonSteamGames = new();
     private ICollectionView? _filteredNonSteamGames;
     private NonSteamGameSave? _selectedNonSteamGame;
     private string _nonSteamSearchText = string.Empty;
     private string _selectedNonSteamFilter = "Todos";
     private bool _isNonSteamScanning;
-    private string _nonSteamScanStatus = "Nenhuma varredura realizada ainda. Clique em 'Escanear Pastas de CorreÃ§Ãµes' para buscar.";
+    private string _nonSteamScanStatus = "Nenhuma varredura realizada ainda. Clique em 'Escanear Pastas de Correções' para buscar.";
     private ObservableCollection<string> _customNonSteamFolders = new();
     private ObservableCollection<NonSteamSearchLocation> _monitoredSearchLocations = new();
     private bool _showMonitoredLocations;
@@ -162,13 +162,13 @@ public class MainViewModel : ViewModelBase
     private string _nonSteamBackupProgressText = string.Empty;
     private string _nonSteamBackupResultSummary = string.Empty;
 
-    // Eventos para o serviÃ§o de bandeja
+    // Eventos para o serviço de bandeja
     public event Action<string, string, bool>? NotificationRequested;
     public event Action<bool>? WatcherStatusChanged;
 
     public MainViewModel()
     {
-        // Carrega configuraÃ§Ãµes persistidas do usuÃ¡rio (com suporte transparente entre perfis Windows)
+        // Carrega configurações persistidas do usuário (com suporte transparente entre perfis Windows)
         var userSettings = AppSettingsService.LoadSettings();
         _batchBackupOutputDir = AppSettingsService.GetEffectiveBackupDirectory();
 
@@ -195,7 +195,7 @@ public class MainViewModel : ViewModelBase
         RefreshSteamCommand = new RelayCommand(async () => await InitializeAsync());
         SaveSettingsCommand = new RelayCommand(SaveSettingsExplicitly);
 
-        // Comandos de Jogos & SeleÃ§Ã£o MÃºltipla
+        // Comandos de Jogos & Seleção Múltipla
         ScanGameSavesCommand = new RelayCommand(async () => await ScanSavesForSelectedGameAsync(), () => SelectedGame != null && !IsBusy);
         SelectAllGamesCommand = new RelayCommand(() => SetSelectionForAll(true));
         DeselectAllGamesCommand = new RelayCommand(() => SetSelectionForAll(false));
@@ -211,7 +211,7 @@ public class MainViewModel : ViewModelBase
         ResetBackupOutputDirCommand = new RelayCommand(ResetBackupOutputDir);
         StartBatchBackupCommand = new RelayCommand(async () => await StartBatchBackupAsync(), () => SelectedGamesCount > 0 && !IsBatchBackingUp);
 
-        // Comandos de RestauraÃ§Ã£o AutomÃ¡tica & Backups Locais (Inteligente e Equiparado Ã  Nuvem)
+        // Comandos de Restauração Automática & Backups Locais (Inteligente e Equiparado à Nuvem)
         RefreshLocalBackupsCommand = new RelayCommand(async () => await LoadLocalBackupsAsync(), () => !IsLocalBackupsLoading);
         ClearLocalSearchCommand = new RelayCommand(() => LocalSearchText = string.Empty);
         DeleteSelectedLocalBackupCommand = new RelayCommand(async () => await DeleteSelectedLocalBackupAsync(), () => SelectedLocalBackup != null && !IsLocalBackupsLoading);
@@ -222,7 +222,7 @@ public class MainViewModel : ViewModelBase
         StartCustomRestoreCommand = new RelayCommand(async () => await StartCustomRestoreAsync(), () => RestoreManifest != null && !IsRestoring);
         SyncAchievementsCommand = new RelayCommand(async () => await SyncAchievementsAsync(), () => HasAchievementsInBackup && SelectedTargetSteamAccount != null && !IsRestoring);
 
-        // Comandos Non-Steam (CorreÃ§Ãµes: CODEX, PLAZA, CPY, HOODLUM, Rune, Voices38, etc.)
+        // Comandos Non-Steam (Correções: CODEX, PLAZA, CPY, HOODLUM, Rune, Voices38, etc.)
         ScanNonSteamSavesCommand = new RelayCommand(async () => await ScanNonSteamSavesAsync(), () => !IsNonSteamScanning && !IsNonSteamBackingUp);
         SelectAllNonSteamCommand = new RelayCommand(() => SetSelectionForAllNonSteam(true));
         DeselectAllNonSteamCommand = new RelayCommand(() => SetSelectionForAllNonSteam(false));
@@ -266,7 +266,7 @@ public class MainViewModel : ViewModelBase
     public async Task InitializeAsync()
     {
         IsBusy = true;
-        StatusMessage = "Detectando instalaÃ§Ã£o da Steam e jogos...";
+        StatusMessage = "Detectando instalação da Steam e jogos...";
 
         await Task.Run(() =>
         {
@@ -307,11 +307,11 @@ public class MainViewModel : ViewModelBase
         }
         else
         {
-            SteamStatusText = "Steam nÃ£o detectada no registro padrÃ£o";
+            SteamStatusText = "Steam não detectada no registro padrão";
             Games.Clear();
         }
 
-        // Detecta perfis Windows disponÃ­veis nesta mÃ¡quina
+        // Detecta perfis Windows disponíveis nesta máquina
         var winProfiles = WindowsKnownFolders.GetAvailableUserProfiles();
         AvailableWindowsProfiles = new ObservableCollection<WindowsProfileInfo>(winProfiles);
 
@@ -333,16 +333,16 @@ public class MainViewModel : ViewModelBase
             SelectedSourceWindowsProfile = winProfiles.FirstOrDefault(p => p.IsCurrentAccount) ?? winProfiles.FirstOrDefault();
         }
 
-        // Carrega backups locais salvos na mÃ¡quina (exibiÃ§Ã£o inteligente na aba Restaurar)
+        // Carrega backups locais salvos na máquina (exibição inteligente na aba Restaurar)
         _ = LoadLocalBackupsAsync();
 
-        // Verifica autenticaÃ§Ã£o prÃ©via no Google Drive em segundo plano
+        // Verifica autenticação prévia no Google Drive em segundo plano
         _ = CheckGoogleDriveStatusAsync();
 
-        // Detecta saves de correÃ§Ãµes Non-Steam em segundo plano
+        // Detecta saves de correções Non-Steam em segundo plano
         _ = ScanNonSteamSavesAsync();
 
-        // Inicia o aplicativo da Steam automaticamente caso configurado e nÃ£o esteja em execuÃ§Ã£o
+        // Inicia o aplicativo da Steam automaticamente caso configurado e não esteja em execução
         if (_openSteamOnStartup)
         {
             _ = Task.Run(() =>
@@ -520,7 +520,7 @@ public class MainViewModel : ViewModelBase
         {
             var dialog = new Microsoft.Win32.OpenFolderDialog
             {
-                Title = "Selecione a pasta onde os backups locais serÃ£o salvos",
+                Title = "Selecione a pasta onde os backups locais serão salvos",
                 InitialDirectory = initialDir,
                 Multiselect = false
             };
@@ -581,7 +581,7 @@ public class MainViewModel : ViewModelBase
     {
         var defaultDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "SteamSavesBackup");
         ApplyBackupDirectoryChange(defaultDir);
-        StatusMessage = $"Pasta de backups redefinida e salva para o padrÃ£o: {defaultDir}";
+        StatusMessage = $"Pasta de backups redefinida e salva para o padrão: {defaultDir}";
     }
 
     private async Task StartBackupAsync()
@@ -590,7 +590,7 @@ public class MainViewModel : ViewModelBase
 
         IsBackingUp = true;
         BackupProgress = 0;
-        BackupProgressText = "Iniciando compactaÃ§Ã£o...";
+        BackupProgressText = "Iniciando compactação...";
         BackupResultSummary = string.Empty;
 
         var progress = new Progress<BackupProgressReport>(report =>
@@ -621,14 +621,14 @@ public class MainViewModel : ViewModelBase
 
             var fileInfo = new FileInfo(zipResult);
             BackupProgress = 100;
-            BackupProgressText = "Backup local concluÃ­do!";
+            BackupProgressText = "Backup local concluído!";
             BackupResultSummary = $"\u2705 Backup local salvo em: {zipResult} ({ByteSizeFormatter.FormatBytes(fileInfo.Length)})";
-            StatusMessage = "Backup local concluÃ­do com sucesso!";
+            StatusMessage = "Backup local concluído com sucesso!";
 
-            // Upload automÃ¡tico para a nuvem se configurado e conectado
+            // Upload automático para a nuvem se configurado e conectado
             if (AutoUploadToCloudOnBackup && IsGoogleDriveConnected)
             {
-                BackupProgressText = "Enviando cÃ³pia para o Google Drive...";
+                BackupProgressText = "Enviando cópia para o Google Drive...";
                 StatusMessage = $"Enviando backup de {BackupGame.Name} para o Google Drive...";
                 try
                 {
@@ -647,8 +647,8 @@ public class MainViewModel : ViewModelBase
                         sourceUsername: SelectedSourceWindowsProfile?.Username,
                         progress: cloudProg);
 
-                    BackupProgressText = "Backup local e em nuvem concluÃ­dos com sucesso!";
-                    BackupResultSummary += " \u2022 \u2601\uFE0F Salvo tambÃ©m no Google Drive!";
+                    BackupProgressText = "Backup local e em nuvem concluídos com sucesso!";
+                    BackupResultSummary += " \u2022 \u2601\uFE0F Salvo também no Google Drive!";
                     StatusMessage = $"Backup de {BackupGame.Name} salvo localmente e no Google Drive!";
                     _ = LoadCloudBackupsAsync();
                 }
@@ -710,7 +710,7 @@ public class MainViewModel : ViewModelBase
             BatchOverallProgressText = "Backup local em lote finalizado!";
             BatchCurrentGameText = string.Empty;
             BatchBackupSummary = $"\U0001F389 Sucesso! {result.SuccessCount} jogo(s) salvos em '{BatchBackupOutputDir}'. Total compactado: {ByteSizeFormatter.FormatBytes(result.TotalSizeBytesArchived)} ({result.TotalFilesArchived} arquivos).";
-            StatusMessage = $"Backup de {result.SuccessCount} jogos concluÃ­do com sucesso!";
+            StatusMessage = $"Backup de {result.SuccessCount} jogos concluído com sucesso!";
 
             // Upload em lote para o Google Drive se configurado e conectado
             if (AutoUploadToCloudOnBackup && IsGoogleDriveConnected && result.SuccessCount > 0)
@@ -721,7 +721,7 @@ public class MainViewModel : ViewModelBase
                     .Take(result.SuccessCount * 2)
                     .ToList();
 
-                BatchCurrentGameText = "Enviando cÃ³pias para o Google Drive...";
+                BatchCurrentGameText = "Enviando cópias para o Google Drive...";
                 for (int i = 0; i < selectedGames.Count; i++)
                 {
                     var g = selectedGames[i];
@@ -794,7 +794,7 @@ public class MainViewModel : ViewModelBase
             if (ofd.FileNames.Length > 1)
             {
                 RestoreZipQueue = new ObservableCollection<string>(ofd.FileNames);
-                RestoreZipPath = $"{ofd.FileNames.Length} arquivos de backup selecionados para restauraÃ§Ã£o";
+                RestoreZipPath = $"{ofd.FileNames.Length} arquivos de backup selecionados para restauração";
                 await LoadRestoreManifestAsync(ofd.FileNames[0]);
                 UpdateAutoMigrationDescription();
                 IsAutoDetected = true;
@@ -812,7 +812,7 @@ public class MainViewModel : ViewModelBase
     {
         var ofd = new OpenFileDialog
         {
-            Title = "Selecione mÃºltiplos arquivos de backup (.zip) para restaurar em lote",
+            Title = "Selecione múltiplos arquivos de backup (.zip) para restaurar em lote",
             Filter = "Arquivos de Backup (*.zip)|*.zip|Todos os arquivos (*.*)|*.*",
             InitialDirectory = BatchBackupOutputDir,
             Multiselect = true
@@ -821,7 +821,7 @@ public class MainViewModel : ViewModelBase
         if (ofd.ShowDialog() == true && ofd.FileNames.Length > 0)
         {
             RestoreZipQueue = new ObservableCollection<string>(ofd.FileNames);
-            RestoreZipPath = $"{ofd.FileNames.Length} arquivos de backup selecionados para restauraÃ§Ã£o";
+            RestoreZipPath = $"{ofd.FileNames.Length} arquivos de backup selecionados para restauração";
             await LoadRestoreManifestAsync(ofd.FileNames[0]);
             UpdateAutoMigrationDescription();
             IsAutoDetected = true;
@@ -849,7 +849,7 @@ public class MainViewModel : ViewModelBase
                 RestoreSourceUser = manifest.SourceUsername;
                 RestoreSourceProfile = manifest.SourceUserProfile;
 
-                // Garante que o destino padrÃ£o seja o usuÃ¡rio atual logado
+                // Garante que o destino padrão seja o usuário atual logado
                 RestoreTargetUser = Environment.UserName;
                 RestoreTargetProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
@@ -858,7 +858,7 @@ public class MainViewModel : ViewModelBase
                 ulong? srcSteamId64 = manifest.SourceSteamId64 ?? (srcSteamId3.HasValue ? PathVariableConverter.SteamId3ToSteamId64(srcSteamId3.Value) : null);
                 string srcPersona = !string.IsNullOrWhiteSpace(manifest.SourceSteamPersonaName)
                     ? manifest.SourceSteamPersonaName
-                    : (srcSteamId3.HasValue ? $"SteamID3: {srcSteamId3.Value}" : "Perfil Steam nÃ£o especificado");
+                    : (srcSteamId3.HasValue ? $"SteamID3: {srcSteamId3.Value}" : "Perfil Steam não especificado");
 
                 if (srcSteamId3.HasValue)
                 {
@@ -869,7 +869,7 @@ public class MainViewModel : ViewModelBase
                 else
                 {
                     HasSourceSteamAccount = false;
-                    RestoreSourceSteamText = "NÃ£o vinculado a perfil especÃ­fico";
+                    RestoreSourceSteamText = "Não vinculado a perfil específico";
                     RestoreSourceSteamDetails = "Saves em pastas gerais do sistema";
                 }
 
@@ -883,7 +883,7 @@ public class MainViewModel : ViewModelBase
                     RestoreAchievements = new ObservableCollection<GameAchievementInfo>(manifest.Achievements);
                     HasAchievementsInBackup = true;
                     int unlocked = manifest.Achievements.Count(a => a.IsUnlocked);
-                    RestoreAchievementsSummary = $"\U0001F3C6 {unlocked} de {manifest.Achievements.Count} conquistas obtidas no backup (serÃ£o vinculadas Ã  conta de destino)";
+                    RestoreAchievementsSummary = $"\U0001F3C6 {unlocked} de {manifest.Achievements.Count} conquistas obtidas no backup (serão vinculadas à conta de destino)";
                 }
                 else
                 {
@@ -904,7 +904,7 @@ public class MainViewModel : ViewModelBase
                 HasAchievementsInBackup = false;
                 RestoreAchievementsSummary = string.Empty;
                 IsAutoDetected = false;
-                StatusMessage = "O arquivo zip nÃ£o contÃ©m manifest.json vÃ¡lido.";
+                StatusMessage = "O arquivo zip não contém manifest.json válido.";
             }
         }
         catch (Exception ex)
@@ -929,9 +929,9 @@ public class MainViewModel : ViewModelBase
         if (SelectedTargetSteamAccount != null)
         {
             var activeTag = SelectedTargetSteamAccount.IsActiveNow ? " [CONECTADO AGORA]" : "";
-            steamMigrationText = $"\n\U0001F3AE MigraÃ§Ã£o de Perfil Steam:\n" +
+            steamMigrationText = $"\n\U0001F3AE Migração de Perfil Steam:\n" +
                                  $"\u2022 Conta Destino: {SelectedTargetSteamAccount.PersonaName} (SteamID3: {SelectedTargetSteamAccount.SteamId3}){activeTag}\n" +
-                                 $"Pastas 'userdata', saves e conquistas serÃ£o sincronizados com esta conta.";
+                                 $"Pastas 'userdata', saves e conquistas serão sincronizados com esta conta.";
         }
 
         var effectiveTargetUser = SelectedTargetWindowsProfile != null
@@ -946,32 +946,32 @@ public class MainViewModel : ViewModelBase
 
         if (RestoreZipQueue.Count > 1)
         {
-            AutoMigrationDescription = $"\u26A1 RestauraÃ§Ã£o em lote de {RestoreZipQueue.Count} backups com 1 clique!\n" +
-                                       $"\u2022 UsuÃ¡rio Windows Destino: '{effectiveTargetUser}'" +
+            AutoMigrationDescription = $"\u26A1 Restauração em lote de {RestoreZipQueue.Count} backups com 1 clique!\n" +
+                                       $"\u2022 Usuário Windows Destino: '{effectiveTargetUser}'" +
                                        steamMigrationText + achTag;
         }
         else if (RestoreManifest != null)
         {
-            AutoMigrationDescription = $"\U0001F3AF MigraÃ§Ã£o AutomÃ¡tica Detectada:\n" +
-                                       $"\u2022 UsuÃ¡rio Windows: {RestoreSourceUser} \u2794Â {effectiveTargetUser}\n" +
-                                       $"\u2022 Pasta Perfil: {RestoreSourceProfile} \u2794Â {effectiveTargetProfile}" +
+            AutoMigrationDescription = $"\U0001F3AF Migração Automática Detectada:\n" +
+                                       $"\u2022 Usuário Windows: {RestoreSourceUser} \u2794 {effectiveTargetUser}\n" +
+                                       $"\u2022 Pasta Perfil: {RestoreSourceProfile} \u2794 {effectiveTargetProfile}" +
                                        steamMigrationText + achTag;
         }
     }
 
     /// <summary>
-    /// RestauraÃ§Ã£o 100% AutomÃ¡tica com 1 Clique (Zero ComplicaÃ§Ã£o e MigraÃ§Ã£o Direta de Perfil Steam, Windows e Conquistas)
+    /// Restauração 100% Automática com 1 Clique (Zero Complicação e Migração Direta de Perfil Steam, Windows e Conquistas)
     /// </summary>
     private async Task StartAutoRestoreAsync()
     {
-        // Se houver mÃºltiplos zips selecionados
+        // Se houver múltiplos zips selecionados
         if (RestoreZipQueue.Count > 1)
         {
             await StartBatchRestoreAsync();
             return;
         }
 
-        // Se nenhum zip explÃ­cito foi digitado, mas um backup local estÃ¡ selecionado
+        // Se nenhum zip explícito foi digitado, mas um backup local está selecionado
         if ((string.IsNullOrWhiteSpace(RestoreZipPath) || !File.Exists(RestoreZipPath)) && SelectedLocalBackup != null)
         {
             RestoreZipPath = SelectedLocalBackup.FilePath;
@@ -998,7 +998,7 @@ public class MainViewModel : ViewModelBase
             }
         });
 
-        // ConfiguraÃ§Ã£o direta estilo Nuvem (sem barreiras de checkboxes)
+        // Configuração direta estilo Nuvem (sem barreiras de checkboxes)
         uint? targetSteamId = SelectedTargetSteamAccount?.SteamId3;
         string? targetUser = SelectedTargetWindowsProfile?.Username ?? Environment.UserName;
         string? targetProfile = SelectedTargetWindowsProfile?.ProfilePath ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -1045,32 +1045,32 @@ public class MainViewModel : ViewModelBase
                 }
                 else if (result.AchievementsSynced > 0)
                 {
-                    achMsg = $" \u2022 \U0001F3C6 {result.AchievementsSynced} conquista(s) vinculadas e sincronizadas Ã  conta Steam!";
+                    achMsg = $" \u2022 \U0001F3C6 {result.AchievementsSynced} conquista(s) vinculadas e sincronizadas à conta Steam!";
                 }
                 else if (result.Achievements != null && result.Achievements.Count > 0)
                 {
                     achMsg = $" \u2022 \U0001F3C6 {result.Achievements.Count(a => a.IsUnlocked)} conquista(s) detectadas no save.";
                 }
 
-                RestoreProgressText = RestoreDryRun ? "SimulaÃ§Ã£o concluÃ­da com sucesso!" : "RestauraÃ§Ã£o automÃ¡tica concluÃ­da com sucesso!";
+                RestoreProgressText = RestoreDryRun ? "Simulação concluída com sucesso!" : "Restauração automática concluída com sucesso!";
                 var steamRunningWarning = !RestoreDryRun && System.Diagnostics.Process.GetProcessesByName("steam").Length > 0
-                    ? " \u26A0\uFE0FÂ AVISO: A Steam estÃ¡ em execuÃ§Ã£o. Feche e reabra a Steam para que ela recarregue os saves e conquistas sincronizadas antes de abrir o jogo!"
+                    ? " \u26A0\uFE0F AVISO: A Steam está em execução. Feche e reabra a Steam para que ela recarregue os saves e conquistas sincronizadas antes de abrir o jogo!"
                     : "";
 
                 RestoreResultSummary = RestoreDryRun
-                    ? $"\U0001F50D  SimulaÃ§Ã£o OK: {result.SuccessCount} arquivos mapeados para '{targetUser}'{steamSuccess}{achMsg} sem gravar no disco."
-                    : $"\U0001F389 Sucesso! {result.SuccessCount} arquivo(s) restaurados no perfil do usuÃ¡rio '{targetUser}'{steamSuccess}{achMsg}!{steamRunningWarning}";
+                    ? $"\U0001F50D  Simulação OK: {result.SuccessCount} arquivos mapeados para '{targetUser}'{steamSuccess}{achMsg} sem gravar no disco."
+                    : $"\U0001F389 Sucesso! {result.SuccessCount} arquivo(s) restaurados no perfil do usuário '{targetUser}'{steamSuccess}{achMsg}!{steamRunningWarning}";
             }
             else
             {
-                RestoreProgressText = "RestauraÃ§Ã£o finalizada com pendÃªncias.";
-                RestoreResultSummary = $"\u26A0\uFE0FÂ Finalizado com {result.ErrorCount} erro(s). Veja os detalhes abaixo.";
+                RestoreProgressText = "Restauração finalizada com pendências.";
+                RestoreResultSummary = $"\u26A0\uFE0F Finalizado com {result.ErrorCount} erro(s). Veja os detalhes abaixo.";
             }
         }
         catch (Exception ex)
         {
-            RestoreProgressText = "Erro na restauraÃ§Ã£o.";
-            RestoreResultSummary = $"\u274C Erro crÃ­tico: {ex.Message}";
+            RestoreProgressText = "Erro na restauração.";
+            RestoreResultSummary = $"\u274C Erro crítico: {ex.Message}";
         }
         finally
         {
@@ -1086,7 +1086,7 @@ public class MainViewModel : ViewModelBase
         RestoreReports.Clear();
         RestoreResultSummary = string.Empty;
 
-        // ConfiguraÃ§Ã£o direta estilo Nuvem
+        // Configuração direta estilo Nuvem
         uint? targetSteamId = SelectedTargetSteamAccount?.SteamId3;
         string? targetUser = SelectedTargetWindowsProfile?.Username ?? Environment.UserName;
         string? targetProfile = SelectedTargetWindowsProfile?.ProfilePath ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -1120,18 +1120,18 @@ public class MainViewModel : ViewModelBase
 
             if (batchResult.IsSuccess)
             {
-                RestoreProgressText = "RestauraÃ§Ã£o em lote concluÃ­da!";
+                RestoreProgressText = "Restauração em lote concluída!";
                 RestoreResultSummary = $"\U0001F389 Sucesso! Todos os {batchResult.SuccessCount} backups foram restaurados automaticamente ({batchResult.TotalFilesRestored} arquivos migrados para '{Environment.UserName}'{steamBatchMsg}).";
             }
             else
             {
-                RestoreProgressText = "RestauraÃ§Ã£o em lote finalizada com erros.";
-                RestoreResultSummary = $"\u26A0\uFE0FÂ ConcluÃ­do: {batchResult.SuccessCount} sucessos, {batchResult.FailureCount} falhas.";
+                RestoreProgressText = "Restauração em lote finalizada com erros.";
+                RestoreResultSummary = $"\u26A0\uFE0F Concluído: {batchResult.SuccessCount} sucessos, {batchResult.FailureCount} falhas.";
             }
         }
         catch (Exception ex)
         {
-            RestoreProgressText = "Erro na restauraÃ§Ã£o em lote.";
+            RestoreProgressText = "Erro na restauração em lote.";
             RestoreResultSummary = $"\u274C Erro: {ex.Message}";
         }
         finally
@@ -1145,7 +1145,7 @@ public class MainViewModel : ViewModelBase
         await StartAutoRestoreAsync();
     }
 
-    // Propriedades observÃ¡veis
+    // Propriedades observáveis
     public bool IsBusy
     {
         get => _isBusy;
@@ -1285,7 +1285,7 @@ public class MainViewModel : ViewModelBase
         }
         catch { }
 
-        // Persiste imediatamente a alteraÃ§Ã£o de pasta de forma atÃ´mica
+        // Persiste imediatamente a alteração de pasta de forma atômica
         AppSettingsService.UpdateCustomBackupDirectory(normalized);
         SaveCurrentSettings();
 
@@ -1564,7 +1564,7 @@ public class MainViewModel : ViewModelBase
     public ICommand ToggleGameWatcherCommand { get; }
     public ICommand ClearWatcherLogsCommand { get; }
 
-    // Comandos Non-Steam (CorreÃ§Ãµes: CODEX, PLAZA, CPY, HOODLUM, Rune, Voices38, etc.)
+    // Comandos Non-Steam (Correções: CODEX, PLAZA, CPY, HOODLUM, Rune, Voices38, etc.)
     public ICommand ScanNonSteamSavesCommand { get; }
     public ICommand SelectAllNonSteamCommand { get; }
     public ICommand DeselectAllNonSteamCommand { get; }
@@ -1578,7 +1578,7 @@ public class MainViewModel : ViewModelBase
     public ICommand ToggleMonitoredLocationsCommand { get; }
 
     // ==========================================
-    // PROPRIEDADES PÃšBLICAS: GOOGLE DRIVE & MONITOR
+    // PROPRIEDADES PÚBLICAS: GOOGLE DRIVE & MONITOR
     // ==========================================
 
     public bool HasGoogleCredentials
@@ -1750,7 +1750,7 @@ public class MainViewModel : ViewModelBase
                 SaveCurrentSettings();
                 StatusMessage = value
                     ? "SteamSaveMigrator configurado para iniciar junto com o Windows / Steam!"
-                    : "InicializaÃ§Ã£o automÃ¡tica com o Windows desativada.";
+                    : "Inicialização automática com o Windows desativada.";
             }
         }
     }
@@ -1937,8 +1937,8 @@ public class MainViewModel : ViewModelBase
     {
         SaveCurrentSettings();
         ApplyBackupDirectoryChange(BatchBackupOutputDir);
-        SettingsSavedFeedback = "\u2705 ConfiguraÃ§Ãµes e pasta salvas e ativas!";
-        StatusMessage = $"ConfiguraÃ§Ãµes salvas com sucesso! Pasta de backups ativa: {BatchBackupOutputDir}";
+        SettingsSavedFeedback = "\u2705 Configurações e pasta salvas e ativas!";
+        StatusMessage = $"Configurações salvas com sucesso! Pasta de backups ativa: {BatchBackupOutputDir}";
 
         _ = Task.Delay(4000).ContinueWith(_ =>
         {
@@ -1971,7 +1971,7 @@ public class MainViewModel : ViewModelBase
         {
             var desktopDir = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
             var guideFile = _engine.GoogleDrive.ExportOAuthSetupGuideToFile(desktopDir);
-            StatusMessage = $"Guia de configuraÃ§Ã£o salvo com sucesso na Ãrea de Trabalho: {Path.GetFileName(guideFile)}";
+            StatusMessage = $"Guia de configuração salvo com sucesso na Área de Trabalho: {Path.GetFileName(guideFile)}";
         }
         catch (Exception ex)
         {
@@ -1980,7 +1980,7 @@ public class MainViewModel : ViewModelBase
     }
 
     // ==========================================
-    // MÃ‰TODOS DE SUPORTE: GOOGLE DRIVE & MONITOR
+    // MÉTODOS DE SUPORTE: GOOGLE DRIVE & MONITOR
     // ==========================================
 
     public async Task CheckGoogleDriveStatusAsync()
@@ -2042,7 +2042,7 @@ public class MainViewModel : ViewModelBase
         _engine.GoogleDrive.CancelAuthentication();
         IsCloudLoading = false;
         StatusMessage = "Tentativa de login cancelada. Clique em 'Conectar Google Drive' para tentar novamente.";
-        GoogleDriveStatusText = "NÃ£o conectado (tentativa cancelada)";
+        GoogleDriveStatusText = "Não conectado (tentativa cancelada)";
         CommandManager.InvalidateRequerySuggested();
     }
 
@@ -2050,23 +2050,23 @@ public class MainViewModel : ViewModelBase
     {
         if (!_engine.GoogleDrive.HasConfiguredCredentials)
         {
-            GoogleDriveStatusText = "Credenciais do Google Drive nÃ£o configuradas.";
+            GoogleDriveStatusText = "Credenciais do Google Drive não configuradas.";
             StatusMessage = "Chaves do Google Cloud ausentes.";
             return;
         }
 
-        // Se o usuÃ¡rio clicou de novo enquanto uma janela/tentativa anterior ainda estava aberta ou pendente,
+        // Se o usuário clicou de novo enquanto uma janela/tentativa anterior ainda estava aberta ou pendente,
         // cancela a anterior imediatamente para liberar a porta e permitir abrir a nova janela sem travamento!
         if (IsCloudLoading || _googleDriveAuthCts != null)
         {
             CancelGoogleDriveAuth();
-            await Task.Delay(400); // Pausa para liberaÃ§Ã£o completa dos sockets locais do HttpListener
+            await Task.Delay(400); // Pausa para liberação completa dos sockets locais do HttpListener
         }
 
         _googleDriveAuthCts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
         IsCloudLoading = true;
-        StatusMessage = "Iniciando autenticaÃ§Ã£o no Google Drive... (autorize na janela do navegador)";
-        GoogleDriveStatusText = "Aguardando autorizaÃ§Ã£o no navegador...";
+        StatusMessage = "Iniciando autenticação no Google Drive... (autorize na janela do navegador)";
+        GoogleDriveStatusText = "Aguardando autorização no navegador...";
         CommandManager.InvalidateRequerySuggested();
 
         try
@@ -2084,31 +2084,31 @@ public class MainViewModel : ViewModelBase
             }
             else
             {
-                StatusMessage = "AutenticaÃ§Ã£o cancelada ou nÃ£o concluÃ­da no navegador.";
-                GoogleDriveStatusText = "NÃ£o conectado (autorizaÃ§Ã£o cancelada)";
+                StatusMessage = "Autenticação cancelada ou não concluída no navegador.";
+                GoogleDriveStatusText = "Não conectado (autorização cancelada)";
             }
         }
         catch (OperationCanceledException)
         {
-            StatusMessage = "AutenticaÃ§Ã£o cancelada. Clique em 'Conectar Google Drive' para tentar novamente.";
-            GoogleDriveStatusText = "NÃ£o conectado ao Google Drive";
+            StatusMessage = "Autenticação cancelada. Clique em 'Conectar Google Drive' para tentar novamente.";
+            GoogleDriveStatusText = "Não conectado ao Google Drive";
         }
         catch (Exception ex)
         {
             if (ex.Message.Contains("401") || ex.Message.Contains("invalid_client"))
             {
-                StatusMessage = "Erro 401 (invalid_client): O Client ID nÃ£o existe ou foi excluÃ­do no Google Cloud.";
-                GoogleDriveStatusText = "Erro 401: Client ID nÃ£o encontrado no Google Cloud.";
+                StatusMessage = "Erro 401 (invalid_client): O Client ID não existe ou foi excluído no Google Cloud.";
+                GoogleDriveStatusText = "Erro 401: Client ID não encontrado no Google Cloud.";
             }
             else if (ex.Message.Contains("403") || ex.Message.Contains("access_denied"))
             {
-                StatusMessage = "Erro 403: E-mail nÃ£o cadastrado em 'UsuÃ¡rios de teste' no Google Cloud Console.";
-                GoogleDriveStatusText = "Erro 403: Acesso negado. Adicione este e-mail como UsuÃ¡rio de teste no console.";
+                StatusMessage = "Erro 403: E-mail não cadastrado em 'Usuários de teste' no Google Cloud Console.";
+                GoogleDriveStatusText = "Erro 403: Acesso negado. Adicione este e-mail como Usuário de teste no console.";
             }
             else
             {
                 StatusMessage = $"Falha ao conectar no Google Drive: {ex.Message}";
-                GoogleDriveStatusText = $"Erro de conexÃ£o: {ex.Message}";
+                GoogleDriveStatusText = $"Erro de conexão: {ex.Message}";
             }
         }
         finally
@@ -2144,7 +2144,7 @@ public class MainViewModel : ViewModelBase
                 }
                 else
                 {
-                    CredentialsStatusText = "\u274C NÃ£o foi possÃ­vel extrair client_id e client_secret do arquivo selecionado.";
+                    CredentialsStatusText = "\u274C Não foi possível extrair client_id e client_secret do arquivo selecionado.";
                 }
             }
             catch (Exception ex)
@@ -2188,7 +2188,7 @@ public class MainViewModel : ViewModelBase
         }
         catch
         {
-            // Ignora se nÃ£o conseguir abrir o navegador
+            // Ignora se não conseguir abrir o navegador
         }
     }
 
@@ -2202,7 +2202,7 @@ public class MainViewModel : ViewModelBase
             await _engine.GoogleDrive.SignOutAsync();
             IsGoogleDriveConnected = false;
             GoogleDriveUserEmail = string.Empty;
-            GoogleDriveStatusText = "NÃ£o conectado ao Google Drive";
+            GoogleDriveStatusText = "Não conectado ao Google Drive";
             CloudBackups.Clear();
             SelectedCloudBackup = null;
             StatusMessage = "Google Drive desconectado.";
@@ -2262,7 +2262,7 @@ public class MainViewModel : ViewModelBase
                 CloudRestoreProgress = p * 100;
                 CloudRestoreProgressText = p < 1.0
                     ? $"Baixando backup do Google Drive... {p:P0}"
-                    : "Download concluÃ­do! Restaurando dados e perfil Steam...";
+                    : "Download concluído! Restaurando dados e perfil Steam...";
             });
 
             var targetSteamId3 = SelectedTargetSteamAccount?.SteamId3;
@@ -2286,14 +2286,14 @@ public class MainViewModel : ViewModelBase
                 var targetUserMsg = !string.IsNullOrWhiteSpace(targetUser) ? targetUser : Environment.UserName;
 
                 var steamRunningWarning = System.Diagnostics.Process.GetProcessesByName("steam").Length > 0
-                    ? " \u26A0\uFE0FÂ AVISO: A Steam estÃ¡ em execuÃ§Ã£o. Feche e reabra a Steam para que ela recarregue os saves sincronizados antes de abrir o jogo!"
+                    ? " \u26A0\uFE0F AVISO: A Steam está em execução. Feche e reabra a Steam para que ela recarregue os saves sincronizados antes de abrir o jogo!"
                     : "";
 
                 var achMsg = res.AchievementsSynced > 0
-                    ? $" \u2022 \U0001F3C6 {res.AchievementsSynced} conquista(s) vinculadas e sincronizadas Ã  conta Steam!"
+                    ? $" \u2022 \U0001F3C6 {res.AchievementsSynced} conquista(s) vinculadas e sincronizadas à conta Steam!"
                     : (res.Achievements != null && res.Achievements.Count > 0 ? $" \u2022 \U0001F3C6 {res.Achievements.Count(a => a.IsUnlocked)} conquista(s) sincronizadas." : "");
 
-                CloudResultSummary = $"\U0001F389 Sucesso! {res.SuccessCount} arquivo(s) restaurados no perfil Windows '{targetUserMsg}'{steamInfoMsg}{achMsg} com perfeiÃ§Ã£o!{steamRunningWarning}";
+                CloudResultSummary = $"\U0001F389 Sucesso! {res.SuccessCount} arquivo(s) restaurados no perfil Windows '{targetUserMsg}'{steamInfoMsg}{achMsg} com perfeição!{steamRunningWarning}";
                 StatusMessage = "Backup da nuvem restaurado com sucesso!";
             }
             else
@@ -2305,7 +2305,7 @@ public class MainViewModel : ViewModelBase
         catch (Exception ex)
         {
             CloudResultSummary = $"\u274C Erro inesperado: {ex.Message}";
-            StatusMessage = "Falha durante a restauraÃ§Ã£o do Google Drive.";
+            StatusMessage = "Falha durante a restauração do Google Drive.";
         }
         finally
         {
@@ -2326,7 +2326,7 @@ public class MainViewModel : ViewModelBase
             await _engine.GoogleDrive.DeleteBackupAsync(toDelete.FileId);
             CloudBackups.Remove(toDelete);
             SelectedCloudBackup = null;
-            StatusMessage = "Backup excluÃ­do da nuvem com sucesso.";
+            StatusMessage = "Backup excluído da nuvem com sucesso.";
         }
         catch (Exception ex)
         {
@@ -2350,7 +2350,7 @@ public class MainViewModel : ViewModelBase
             }
             IsGameWatcherActive = false;
             WatcherStatusBadge = "\U0001F7E2 Ativo e Monitorando";
-            AddWatcherLog("\U0001F6D1 Monitor de jogos parado pelo usuÃ¡rio.");
+            AddWatcherLog("\U0001F6D1 Monitor de jogos parado pelo usuário.");
             StatusMessage = "Monitor de jogos desativado.";
             WatcherStatusChanged?.Invoke(false);
         }
@@ -2371,7 +2371,7 @@ public class MainViewModel : ViewModelBase
 
             IsGameWatcherActive = true;
             WatcherStatusBadge = "\U0001F7E2 Ativo e Monitorando";
-            AddWatcherLog($"\U0001F7E2 Monitor iniciado! VigiarÃ¡ processos Steam a cada {config.PollIntervalSeconds}s.");
+            AddWatcherLog($"\U0001F7E2 Monitor iniciado! Vigiará processos Steam a cada {config.PollIntervalSeconds}s.");
             StatusMessage = "Monitor de jogos ativado.";
             WatcherStatusChanged?.Invoke(true);
         }
@@ -2389,13 +2389,13 @@ public class MainViewModel : ViewModelBase
             {
                 case GameWatcherEventType.GameStarted:
                     logLine = $"[{time}] \U0001F3AE JOGO INICIADO: {gameName} (AppID: {e.Game?.AppId})";
-                    WatcherLastEventText = $"Jogo em execuÃ§Ã£o: {gameName}";
+                    WatcherLastEventText = $"Jogo em execução: {gameName}";
                     break;
 
                 case GameWatcherEventType.GameExited:
                     logLine = $"[{time}] \u23F9\uFE0F JOGO FECHADO: {gameName}! Aguardando dados de save...";
                     WatcherLastEventText = $"Jogo fechado: {gameName}. Preparando backup...";
-                    NotificationRequested?.Invoke("Jogo Steam Fechado", $"\U0001F3AE {gameName} foi fechado. Realizando backup automÃ¡tico...", false);
+                    NotificationRequested?.Invoke("Jogo Steam Fechado", $"\U0001F3AE {gameName} foi fechado. Realizando backup automático...", false);
                     break;
 
                 case GameWatcherEventType.BackupStarted:
@@ -2415,17 +2415,17 @@ public class MainViewModel : ViewModelBase
                 case GameWatcherEventType.CloudUploadCompleted:
                     logLine = $"[{time}] \U0001F389 SINCRONIZADO NO GOOGLE DRIVE: {gameName} salvo na nuvem!";
                     WatcherLastEventText = $"Salvo na nuvem: {gameName}";
-                    NotificationRequested?.Invoke("Backup na Nuvem ConcluÃ­do", $"\U0001F389 Saves de {gameName} sincronizados no Google Drive com sucesso!", true);
+                    NotificationRequested?.Invoke("Backup na Nuvem Concluído", $"\U0001F389 Saves de {gameName} sincronizados no Google Drive com sucesso!", true);
                     _ = LoadCloudBackupsAsync();
                     break;
 
                 case GameWatcherEventType.Error:
                     logLine = $"[{time}] \u274C ERRO: {e.Message}";
                     WatcherLastEventText = $"Erro: {e.Message}";
-                    if (e.Message.Contains("nÃ£o autenticado") || e.Message.Contains("insufficient") || e.Message.Contains("Forbidden"))
+                    if (e.Message.Contains("não autenticado") || e.Message.Contains("insufficient") || e.Message.Contains("Forbidden"))
                     {
                         IsGoogleDriveConnected = false;
-                        GoogleDriveStatusText = "NÃ£o autenticado. Clique em 'Conectar Google Drive'.";
+                        GoogleDriveStatusText = "Não autenticado. Clique em 'Conectar Google Drive'.";
                     }
                     NotificationRequested?.Invoke("Aviso do Monitor", e.Message, false);
                     break;
@@ -2449,7 +2449,7 @@ public class MainViewModel : ViewModelBase
     }
 
     // ==========================================
-    // BACKUPS LOCAIS (EQUIPARADO Ã€ NUVEM)
+    // BACKUPS LOCAIS (EQUIPARADO À NUVEM)
     // ==========================================
 
     public ObservableCollection<LocalBackupInfo> LocalBackups
@@ -2516,7 +2516,7 @@ public class MainViewModel : ViewModelBase
     }
 
     // ==========================================
-    // MÃ“DULO DE CONQUISTAS (ACHIEVEMENTS)
+    // MÓDULO DE CONQUISTAS (ACHIEVEMENTS)
     // ==========================================
 
     public ObservableCollection<GameAchievementInfo> RestoreAchievements
@@ -2589,7 +2589,7 @@ public class MainViewModel : ViewModelBase
             }
             LocalBackups.Remove(toDelete);
             SelectedLocalBackup = LocalBackups.FirstOrDefault();
-            StatusMessage = $"Backup local de '{toDelete.GameName}' excluÃ­do com sucesso.";
+            StatusMessage = $"Backup local de '{toDelete.GameName}' excluído com sucesso.";
             OnPropertyChanged(nameof(FilteredLocalBackupsCount));
         }
         catch (Exception ex)
@@ -2603,13 +2603,13 @@ public class MainViewModel : ViewModelBase
         var target = item ?? SelectedLocalBackup;
         if (target == null || !File.Exists(target.FilePath))
         {
-            StatusMessage = "Selecione um arquivo de backup local vÃ¡lido para enviar.";
+            StatusMessage = "Selecione um arquivo de backup local válido para enviar.";
             return;
         }
 
         if (!IsGoogleDriveConnected)
         {
-            StatusMessage = "Google Drive nÃ£o conectado. Conecte sua conta na aba 'Nuvem' antes de enviar.";
+            StatusMessage = "Google Drive não conectado. Conecte sua conta na aba 'Nuvem' antes de enviar.";
             return;
         }
 
@@ -2634,12 +2634,12 @@ public class MainViewModel : ViewModelBase
                 achievementsUnlockedCount: target.AchievementsUnlockedCount,
                 progress: progress);
 
-            StatusMessage = $"âœ… Backup de '{target.GameName}' enviado com sucesso para o Google Drive!";
+            StatusMessage = $"✅ Backup de '{target.GameName}' enviado com sucesso para o Google Drive!";
             _ = LoadCloudBackupsAsync();
         }
         catch (Exception ex)
         {
-            StatusMessage = $"âŒ Falha ao enviar para o Google Drive: {ex.Message}";
+            StatusMessage = $"❌ Falha ao enviar para o Google Drive: {ex.Message}";
         }
         finally
         {
@@ -2651,7 +2651,7 @@ public class MainViewModel : ViewModelBase
     {
         if (RestoreManifest == null || RestoreManifest.Achievements == null || RestoreManifest.Achievements.Count == 0)
         {
-            StatusMessage = "Nenhuma conquista disponÃ­vel no backup para sincronizar.";
+            StatusMessage = "Nenhuma conquista disponível no backup para sincronizar.";
             return;
         }
 
@@ -2664,7 +2664,7 @@ public class MainViewModel : ViewModelBase
 
         try
         {
-            StatusMessage = "\U0001F3C6 Conectando Ã  Steam e sincronizando conquistas...";
+            StatusMessage = "\U0001F3C6 Conectando à Steam e sincronizando conquistas...";
             var achService = new SteamAchievementService();
             var syncResult = achService.SyncAchievements(
                 _engine.SteamInfo.SteamPath,
@@ -2686,7 +2686,7 @@ public class MainViewModel : ViewModelBase
     }
 
     // =========================================================================
-    // ABA NON-STEAM: PROPRIEDADES E MÃ‰TODOS PARA JOGOS E CORREÃ‡Ã•ES (CODEX, RUNE, ETC.)
+    // ABA NON-STEAM: PROPRIEDADES E MÉTODOS PARA JOGOS E CORREÇÕES (CODEX, RUNE, ETC.)
     // =========================================================================
 
     public ObservableCollection<NonSteamGameSave> NonSteamGames
@@ -2849,7 +2849,7 @@ public class MainViewModel : ViewModelBase
     {
         if (obj is not NonSteamGameSave item) return false;
 
-        // Filtro por categoria / correÃ§Ã£o
+        // Filtro por categoria / correção
         if (!string.IsNullOrWhiteSpace(SelectedNonSteamFilter) && !SelectedNonSteamFilter.Equals("Todos", StringComparison.OrdinalIgnoreCase))
         {
             if (SelectedNonSteamFilter.Equals("Outros", StringComparison.OrdinalIgnoreCase))
@@ -2883,7 +2883,7 @@ public class MainViewModel : ViewModelBase
         if (IsNonSteamScanning) return;
 
         IsNonSteamScanning = true;
-        NonSteamScanStatus = "Escaneando diretÃ³rios de correÃ§Ãµes e emuladores Steam...";
+        NonSteamScanStatus = "Escaneando diretórios de correções e emuladores Steam...";
 
         var progress = new Progress<string>(msg =>
         {
@@ -2894,7 +2894,7 @@ public class MainViewModel : ViewModelBase
         {
             var detected = await _engine.DetectNonSteamSavesAsync(CustomNonSteamFolders, progress);
 
-            // Vincula o evento PropertyChanged em cada item para atualizar seleÃ§Ã£o em tempo real
+            // Vincula o evento PropertyChanged em cada item para atualizar seleção em tempo real
             foreach (var item in detected)
             {
                 item.PropertyChanged += (s, e) =>
@@ -2916,8 +2916,8 @@ public class MainViewModel : ViewModelBase
             NotifyNonSteamSelectionChanged();
 
             NonSteamScanStatus = detected.Count > 0
-                ? $"Varredura concluÃ­da: {detected.Count} jogo(s) com saves identificados nas pastas de correÃ§Ãµes."
-                : "Varredura concluÃ­da: Nenhum save de correÃ§Ãµes Steam foi encontrado nas pastas padrÃ£o.";
+                ? $"Varredura concluída: {detected.Count} jogo(s) com saves identificados nas pastas de correções."
+                : "Varredura concluída: Nenhum save de correções Steam foi encontrado nas pastas padrão.";
         }
         catch (Exception ex)
         {
@@ -3040,15 +3040,15 @@ public class MainViewModel : ViewModelBase
                 progress);
 
             NonSteamBackupProgress = 100;
-            NonSteamBackupProgressText = "Backup em lote concluÃ­do com sucesso!";
-            NonSteamBackupResultSummary = $"âœ… {result.SuccessCount} jogo(s) salvos com sucesso em '{currentOutputDir}'. Total: {result.TotalSizeBytesArchived / (1024.0 * 1024.0):F2} MB compactados.";
-            StatusMessage = $"Backup em lote Non-Steam concluÃ­do: {result.SuccessCount} jogos salvos.";
+            NonSteamBackupProgressText = "Backup em lote concluído com sucesso!";
+            NonSteamBackupResultSummary = $"✅ {result.SuccessCount} jogo(s) salvos com sucesso em '{currentOutputDir}'. Total: {result.TotalSizeBytesArchived / (1024.0 * 1024.0):F2} MB compactados.";
+            StatusMessage = $"Backup em lote Non-Steam concluído: {result.SuccessCount} jogos salvos.";
 
-            // Upload automÃ¡tico para a nuvem se configurado e conectado
+            // Upload automático para a nuvem se configurado e conectado
             if (AutoUploadToCloudNonSteamBackup && IsGoogleDriveConnected && result.SuccessCount > 0)
             {
                 int cloudSuccess = 0;
-                NonSteamBackupProgressText = "Enviando cÃ³pias Non-Steam para o Google Drive...";
+                NonSteamBackupProgressText = "Enviando cópias Non-Steam para o Google Drive...";
                 var filesToUpload = result.GeneratedZipFiles != null && result.GeneratedZipFiles.Count > 0
                     ? result.GeneratedZipFiles
                     : Directory.GetFiles(currentOutputDir, "*.zip")
@@ -3083,7 +3083,7 @@ public class MainViewModel : ViewModelBase
 
                 if (cloudSuccess > 0)
                 {
-                    NonSteamBackupResultSummary += $" \u2022 â˜ï¸ {cloudSuccess} backup(s) sincronizados no Google Drive!";
+                    NonSteamBackupResultSummary += $" \u2022 ☁️ {cloudSuccess} backup(s) sincronizados no Google Drive!";
                     StatusMessage += $" ({cloudSuccess} salvos no Google Drive)";
                     _ = LoadCloudBackupsAsync();
                 }
@@ -3095,7 +3095,7 @@ public class MainViewModel : ViewModelBase
         catch (Exception ex)
         {
             NonSteamBackupProgressText = "Erro durante o backup.";
-            NonSteamBackupResultSummary = $"âŒ Falha ao realizar backup em lote: {ex.Message}";
+            NonSteamBackupResultSummary = $"❌ Falha ao realizar backup em lote: {ex.Message}";
             StatusMessage = $"Erro no backup Non-Steam: {ex.Message}";
         }
         finally
@@ -3151,14 +3151,14 @@ public class MainViewModel : ViewModelBase
         {
             await _engine.BackupNonSteamGameAsync(save, sfd.FileName, null, progress);
             NonSteamBackupProgress = 100;
-            NonSteamBackupProgressText = "Backup individual concluÃ­do com sucesso!";
-            NonSteamBackupResultSummary = $"âœ… Backup de '{save.GameName}' salvo com sucesso em '{sfd.FileName}'.";
+            NonSteamBackupProgressText = "Backup individual concluído com sucesso!";
+            NonSteamBackupResultSummary = $"✅ Backup de '{save.GameName}' salvo com sucesso em '{sfd.FileName}'.";
             StatusMessage = $"Backup de {save.GameName} salvo.";
 
-            // Upload automÃ¡tico para a nuvem se configurado e conectado
+            // Upload automático para a nuvem se configurado e conectado
             if (AutoUploadToCloudNonSteamBackup && IsGoogleDriveConnected)
             {
-                NonSteamBackupProgressText = "Enviando cÃ³pia Non-Steam para o Google Drive...";
+                NonSteamBackupProgressText = "Enviando cópia Non-Steam para o Google Drive...";
                 StatusMessage = $"Enviando backup de {save.GameName} para o Google Drive...";
                 try
                 {
@@ -3175,14 +3175,14 @@ public class MainViewModel : ViewModelBase
                         sourceUsername: Environment.UserName,
                         progress: cloudProg);
 
-                    NonSteamBackupProgressText = "Backup local e em nuvem concluÃ­dos com sucesso!";
-                    NonSteamBackupResultSummary += " \u2022 â˜ï¸ Salvo tambÃ©m no Google Drive!";
+                    NonSteamBackupProgressText = "Backup local e em nuvem concluídos com sucesso!";
+                    NonSteamBackupResultSummary += " \u2022 ☁️ Salvo também no Google Drive!";
                     StatusMessage = $"Backup de {save.GameName} salvo localmente e no Google Drive!";
                     _ = LoadCloudBackupsAsync();
                 }
                 catch (Exception cloudEx)
                 {
-                    NonSteamBackupResultSummary += $" \u2022 âš ï¸ Falha no upload para nuvem: {cloudEx.Message}";
+                    NonSteamBackupResultSummary += $" \u2022 ⚠️ Falha no upload para nuvem: {cloudEx.Message}";
                     StatusMessage = $"Backup local salvo, mas falhou ao enviar para nuvem: {cloudEx.Message}";
                 }
             }
@@ -3192,7 +3192,7 @@ public class MainViewModel : ViewModelBase
         catch (Exception ex)
         {
             NonSteamBackupProgressText = "Erro durante o backup.";
-            NonSteamBackupResultSummary = $"âŒ Erro ao salvar backup: {ex.Message}";
+            NonSteamBackupResultSummary = $"❌ Erro ao salvar backup: {ex.Message}";
             StatusMessage = $"Erro no backup: {ex.Message}";
         }
         finally
@@ -3212,7 +3212,7 @@ public class MainViewModel : ViewModelBase
 
         if (!IsGoogleDriveConnected)
         {
-            StatusMessage = "Google Drive nÃ£o conectado. Conecte sua conta na aba 'Nuvem' antes de enviar.";
+            StatusMessage = "Google Drive não conectado. Conecte sua conta na aba 'Nuvem' antes de enviar.";
             return;
         }
 
@@ -3269,8 +3269,8 @@ public class MainViewModel : ViewModelBase
                 progress: cloudProg);
 
             NonSteamBackupProgress = 100;
-            NonSteamBackupProgressText = "Backup e upload para nuvem concluÃ­dos com sucesso!";
-            NonSteamBackupResultSummary = $"âœ… '{target.GameName}' salvo com sucesso em '{outputZip}' e sincronizado no Google Drive!";
+            NonSteamBackupProgressText = "Backup e upload para nuvem concluídos com sucesso!";
+            NonSteamBackupResultSummary = $"✅ '{target.GameName}' salvo com sucesso em '{outputZip}' e sincronizado no Google Drive!";
             StatusMessage = $"Backup de {target.GameName} salvo e enviado para o Google Drive!";
 
             await LoadLocalBackupsAsync();
@@ -3279,7 +3279,7 @@ public class MainViewModel : ViewModelBase
         catch (Exception ex)
         {
             NonSteamBackupProgressText = "Erro durante backup/envio.";
-            NonSteamBackupResultSummary = $"âŒ Erro ao enviar para a nuvem: {ex.Message}";
+            NonSteamBackupResultSummary = $"❌ Erro ao enviar para a nuvem: {ex.Message}";
             StatusMessage = $"Erro no envio para nuvem: {ex.Message}";
         }
         finally
@@ -3313,7 +3313,7 @@ public class MainViewModel : ViewModelBase
             }
             else
             {
-                StatusMessage = "O caminho especificado nÃ£o existe no sistema.";
+                StatusMessage = "O caminho especificado não existe no sistema.";
             }
         }
         catch (Exception ex)
@@ -3332,8 +3332,6 @@ public class MainViewModel : ViewModelBase
         catch { }
     }
 }
-
-
 
 
 

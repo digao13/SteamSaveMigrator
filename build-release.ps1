@@ -67,6 +67,15 @@ if (Test-Path $mainVm) {
     [System.IO.File]::WriteAllText($mainVm, $content, [System.Text.Encoding]::UTF8)
 }
 
+# Atualiza MainWindow.xaml
+$mainWindowXaml = Join-Path $scriptRoot "src\SteamSaveMigrator.Wpf\MainWindow.xaml"
+if (Test-Path $mainWindowXaml) {
+    $content = [System.IO.File]::ReadAllText($mainWindowXaml, [System.Text.Encoding]::UTF8)
+    $content = [regex]::Replace($content, "FallbackValue='v\d+\.\d+\.\d+'", "FallbackValue='v$Version'")
+    $content = [regex]::Replace($content, "SteamSave Migrator v\d+\.\d+\.\d+", "SteamSave Migrator v$Version")
+    [System.IO.File]::WriteAllText($mainWindowXaml, $content, [System.Text.Encoding]::UTF8)
+}
+
 # 2. EXECUTAR TESTES AUTOMATIZADOS
 Write-Host "`n[2/7] Executando testes unitários automatizados..." -ForegroundColor Green
 $testProj = Join-Path $scriptRoot "tests\SteamSaveMigrator.Tests\SteamSaveMigrator.Tests.csproj"
