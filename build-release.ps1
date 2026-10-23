@@ -150,7 +150,7 @@ if ($CreateGitHubRelease -and (Get-Command gh -ErrorAction SilentlyContinue) -an
 "@
         }
 
-        gh release view $tag > $null 2>&1
+        cmd /c "gh release view $tag >nul 2>&1"
         if ($LASTEXITCODE -eq 0) {
             gh release upload $tag $setupExe $portableZip --clobber
             Write-Host " -> Release $tag atualizada com novos binários no GitHub!" -ForegroundColor Cyan
